@@ -10,6 +10,8 @@ const usersRoutes = require("./routes/users-routes");
 
 const app = express();
 
+const PORT = process.env.PORT || 5000
+
 app.use(bodyParser.json());
 
 app.use("/uploads/images", express.static(path.join("uploads", "images")));
@@ -53,7 +55,7 @@ mongoose
     `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.asoq9vn.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`
   )
   .then(() => {
-    app.listen(5000);
-    console.log("Connected to MongoDB and listening on port 5000.");
+    app.listen(PORT);
+    console.log("Connected to MongoDB and listening on port" + PORT);
   })
   .catch((err) => console.log(err));
