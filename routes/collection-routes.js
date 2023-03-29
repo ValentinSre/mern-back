@@ -10,23 +10,6 @@ router.get("/:uid", collectionControllers.getCollectionByUserId);
 
 // Middleware pour protéger l'accès aux routes suivantes
 router.use(checkAuth);
-
-router.post(
-  "/",
-  [
-    check("title").not().isEmpty(),
-    check("description").isLength({ min: 5 }),
-    check("address").not().isEmpty(),
-  ],
-  collectionControllers.createPlace
-);
-
-router.patch(
-  "/:pid",
-  [check("title").not().isEmpty(), check("description").isLength({ min: 5 })],
-  collectionControllers.updatePlace
-);
-
-router.delete("/:pid", collectionControllers.deletePlace);
+router.post("/add", collectionControllers.addBookToCollection);
 
 module.exports = router;

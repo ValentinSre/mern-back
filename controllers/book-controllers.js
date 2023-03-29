@@ -2,11 +2,14 @@ const HttpError = require("../models/http-error");
 const uuid = require("uuid").v4;
 const fs = require("fs");
 const Book = require("../models/book");
+const Collection = require("../models/collection");
 const mongoose = require("mongoose");
 
 const { validationResult } = require("express-validator");
 
 const getBooks = async (req, res, next) => {
+  const { user } = req.query;
+
   let books;
   try {
     books = await Book.find();
@@ -18,11 +21,38 @@ const getBooks = async (req, res, next) => {
     return next(error);
   }
 
-  res.json({ books: books.map((book) => book.toObject({ getters: true })) });
+  let collection;
+  if (user) {
+    try {
+      collection = await Collection.find({ owner: user });
+    } catch (err) {
+      const error = new HttpError(
+        "La collecte de livres a échoué (collection), veuillez réessayer...",
+        500
+      );
+      return next(error);
+    }
+  }
+
+  // Fusionner les listes de books et de collections
+  const mergedBooks = books.map((book) => {
+    const bookObj = book.toObject({ getters: true });
+    if (collection) {
+      const bookCollection = collection.find(
+        (col) => col.book.toString() === book._id.toString()
+      );
+      if (bookCollection) {
+        bookObj.souhaite = bookCollection.souhaite;
+        bookObj.possede = bookCollection.possede;
+      }
+    }
+    return bookObj;
+  });
+
+  res.json({ books: mergedBooks });
 };
 
 const createBook = async (req, res, next) => {
-  console.log(req.body);
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     const error = new HttpError(
