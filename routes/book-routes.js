@@ -22,7 +22,6 @@ router.post(
     check("auteur").not().isEmpty(),
     check("editeur").not().isEmpty(),
     check("dessinateur").not().isEmpty(),
-    check("format").not().isEmpty(),
   ],
   bookControllers.createBook
 );
