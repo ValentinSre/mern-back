@@ -74,6 +74,7 @@ const createBook = async (req, res, next) => {
     format,
     genre,
     dessinateur,
+    type,
   } = req.body;
 
   const bookModel = {
@@ -83,6 +84,7 @@ const createBook = async (req, res, next) => {
     prix,
     image,
     dessinateur,
+    type: type || "Comics"
   };
 
   if (serie) bookModel.serie = serie;
