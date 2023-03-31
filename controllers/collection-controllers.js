@@ -43,57 +43,61 @@ const addBookToCollection = async (req, res, next) => {
     next(error);
   }
 
-  const { id_book, id_user, list_name, books } = req.body;
+  const { ids_book, id_user, list_name, books } = req.body;
 
-  let collection;
-  try {
-    collection = await Collection.findOne({ book: id_book, owner: id_user });
-  } catch (err) {
-    const error = new HttpError(
-      "La création de la collection a échoué, veuillez réessayer.",
-      500
-    );
-    return next(error);
-  }
+  let updatedBooks = books.slice(); // Créer une copie du tableau de livres
 
-  if (collection) {
-    if (list_name === "collection") {
-      collection.possede = true;
-      collection.souhaite = false;
-    } else if (list_name === "wishlist" && !collection.possede) {
-      collection.souhaite = true;
+  for (const id_book of ids_book) {
+    let collection;
+    try {
+      collection = await Collection.findOne({ book: id_book, owner: id_user });
+    } catch (err) {
+      const error = new HttpError(
+        "La création de la collection a échoué, veuillez réessayer.",
+        500
+      );
+      return next(error);
     }
-  } else {
-    collection = new Collection({
-      book: id_book,
-      owner: id_user,
-      possede: list_name === "collection" ? true : false,
-      souhaite: list_name === "wishlist" ? true : false,
-    });
-  }
 
-  try {
-    await collection.save();
-  } catch (err) {
-    const error = new HttpError(
-      "La création de la collection a échoué, veuillez réessayer.",
-      500
-    );
-    return next(error);
-  }
+    if (collection) {
+      if (list_name === "collection") {
+        collection.possede = true;
+        collection.souhaite = false;
+      } else if (list_name === "wishlist" && !collection.possede) {
+        collection.souhaite = true;
+      }
+    } else {
+      collection = new Collection({
+        book: id_book,
+        owner: id_user,
+        possede: list_name === "collection" ? true : false,
+        souhaite: list_name === "wishlist" ? true : false,
+      });
+    }
 
-  // Mettre à jour la liste de livres où on ajoute la collection
-  const bookIndex = books.findIndex((b) => b.id === id_book);
-  if (bookIndex >= 0) {
-    if (list_name === "collection") {
-      books[bookIndex].possede = true;
-      books[bookIndex].souhaite = false;
-    } else if (list_name === "wishlist" && !books[bookIndex].possede) {
-      books[bookIndex].souhaite = true;
+    try {
+      await collection.save();
+    } catch (err) {
+      const error = new HttpError(
+        "La création de la collection a échoué, veuillez réessayer.",
+        500
+      );
+      return next(error);
+    }
+
+    // Mettre à jour la liste de livres où on ajoute la collection
+    const bookIndex = updatedBooks.findIndex((b) => b.id === id_book);
+    if (bookIndex >= 0) {
+      if (list_name === "collection") {
+        updatedBooks[bookIndex].possede = true;
+        updatedBooks[bookIndex].souhaite = false;
+      } else if (list_name === "wishlist" && !updatedBooks[bookIndex].possede) {
+        updatedBooks[bookIndex].souhaite = true;
+      }
     }
   }
 
-  res.status(201).json({ books });
+  res.status(201).json({ books: updatedBooks });
 };
 
 exports.getCollectionByUserId = getCollectionByUserId;

@@ -7,6 +7,7 @@ const checkAuth = require("../middleware/check-auth");
 const router = express.Router();
 
 router.get("/", bookControllers.getBooks);
+router.get("/:bid", bookControllers.getBookById);
 
 // router.get("/user/:uid", placesControllers.getPlacesByUserId);
 

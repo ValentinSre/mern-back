@@ -52,6 +52,58 @@ const getBooks = async (req, res, next) => {
   res.json({ books: mergedBooks });
 };
 
+const getBookById = async (req, res, next) => {
+  const book = req.params.bid;
+  const { user } = req.query;
+  console.log("book", book);
+  let bookById;
+  try {
+    bookById = await Book.find({ _id: book });
+  } catch (err) {
+    const error = new HttpError(
+      "La collecte de livre a échoué, veuillez réessayer...",
+      500
+    );
+    return next(error);
+  }
+
+  console.log("bookById", bookById);
+
+  let collection;
+  if (user) {
+    try {
+      collection = await Collection.find({ owner: user });
+    } catch (err) {
+      const error = new HttpError(
+        "La collecte de livre a échoué (collection), veuillez réessayer...",
+        500
+      );
+      return next(error);
+    }
+  }
+
+  console.log("collection", collection);
+
+  // Regarder si le livre est dans la collection de l'utilisateur
+  if (collection) {
+    const bookCollection = collection.find(
+      (col) => col.book.toString() === book
+    );
+    if (bookCollection) {
+      bookById[0].souhaite = bookCollection.souhaite;
+      bookById[0].possede = bookCollection.possede;
+      bookById[0].critique = bookCollection.critique;
+      bookById[0].lu = bookCollection.lu;
+      bookById[0].note = bookCollection.note;
+      bookById[0].date_achat = bookCollection.date_achat;
+      bookById[0].lien = bookCollection.lien;
+    }
+  }
+
+  console.log("bookById", bookById);
+  res.status(200).json({ book: bookById[0].toObject({ getters: true }) });
+};
+
 const createBook = async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -84,7 +136,7 @@ const createBook = async (req, res, next) => {
     prix,
     image,
     dessinateur,
-    type: type || "Comics"
+    type: type || "Comics",
   };
 
   if (serie) bookModel.serie = serie;
@@ -211,3 +263,4 @@ const createBook = async (req, res, next) => {
 
 exports.getBooks = getBooks;
 exports.createBook = createBook;
+exports.getBookById = getBookById;
