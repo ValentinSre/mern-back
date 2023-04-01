@@ -13,7 +13,10 @@ const getCollectionByUserId = async (req, res, next) => {
   let collection;
 
   try {
-    collection = await Collection.find({ owner: userId }).populate("book");
+    collection = await Collection.find({
+      owner: userId,
+      possede: true,
+    }).populate("book");
   } catch (err) {
     const error = new HttpError(
       "Fetching collection failed, please try again later",
@@ -28,8 +31,22 @@ const getCollectionByUserId = async (req, res, next) => {
     );
   }
 
+  const collectionToReturn = collection.map((coll) => {
+    const { book, ...rest } = coll.toObject({ getters: true });
+    return { ...book, ...rest };
+  });
+
+  // Fetch editeurs
+  let editeurs = [];
+  for (const coll of collectionToReturn) {
+    if (!editeurs.includes(coll.editeur)) {
+      editeurs.push(coll.editeur);
+    }
+  }
+
   res.json({
-    collection: collection.map((coll) => coll.toObject({ getters: true })),
+    collection: collectionToReturn,
+    editeurs: editeurs,
   });
 };
 
