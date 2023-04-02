@@ -5,7 +5,7 @@ const Schema = mongoose.Schema;
 const bookSchema = new Schema({
   serie: { type: String, required: false },
   titre: { type: String, required: true },
-  auteur: { type: String, required: true },
+  auteurs: [{ type: mongoose.Types.ObjectId, required: true, ref: "Artist" }],
   editeur: { type: String, required: true },
   date_parution: { type: Date, required: false },
   tome: { type: Number, required: false },
@@ -13,7 +13,9 @@ const bookSchema = new Schema({
   image: { type: String, required: true },
   format: { type: String, required: false },
   genre: { type: String, required: false },
-  dessinateur: { type: String, required: true },
+  dessinateurs: [
+    { type: mongoose.Types.ObjectId, required: true, ref: "Artist" },
+  ],
   type: { type: String, required: true },
   version: { type: Number, required: false },
 });

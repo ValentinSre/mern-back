@@ -16,7 +16,13 @@ const getCollectionByUserId = async (req, res, next) => {
     collection = await Collection.find({
       owner: userId,
       possede: true,
-    }).populate("book");
+    }).populate({
+      path: "book",
+      populate: [
+        { path: "auteurs", model: "Artist" },
+        { path: "dessinateurs", model: "Artist" },
+      ],
+    });
   } catch (err) {
     const error = new HttpError(
       "Fetching collection failed, please try again later",

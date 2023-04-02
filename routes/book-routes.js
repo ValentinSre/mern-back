@@ -7,6 +7,7 @@ const checkAuth = require("../middleware/check-auth");
 const router = express.Router();
 
 router.get("/", bookControllers.getBooks);
+router.get("/all-information", bookControllers.getAllBooksInformation);
 router.get("/:bid", bookControllers.getBookById);
 
 // router.get("/user/:uid", placesControllers.getPlacesByUserId);
@@ -18,11 +19,10 @@ router.post(
   "/",
   [
     check("titre").not().isEmpty(),
-    check("image").not().isEmpty(),
-    check("prix").not().isEmpty(),
-    check("auteur").not().isEmpty(),
     check("editeur").not().isEmpty(),
-    check("dessinateur").not().isEmpty(),
+    check("prix").not().isEmpty(),
+    // check("auteurs").not().isEmpty(),
+    // check("dessinateurs").not().isEmpty(),
   ],
   bookControllers.createBook
 );

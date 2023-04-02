@@ -1,8 +1,7 @@
 const HttpError = require("../models/http-error");
-const uuid = require("uuid").v4;
-const fs = require("fs");
 const Book = require("../models/book");
 const Collection = require("../models/collection");
+const Artist = require("../models/artist");
 const mongoose = require("mongoose");
 
 const { validationResult } = require("express-validator");
@@ -104,11 +103,62 @@ const getBookById = async (req, res, next) => {
   res.status(200).json({ book: bookById[0].toObject({ getters: true }) });
 };
 
+const getAllBooksInformation = async (req, res, next) => {
+  // Récupérer les informations des livres
+  let books;
+  try {
+    books = await Book.find();
+  } catch (err) {
+    const error = new HttpError(
+      "La collecte de livres a échoué, veuillez réessayer...",
+      500
+    );
+    return next(error);
+  }
+
+  // Récupérer les informations des auteurs
+  let artistes;
+  try {
+    artistes = await Artist.find();
+  } catch (err) {
+    const error = new HttpError(
+      "La collecte des artistes a échoué, veuillez réessayer...",
+      500
+    );
+    return next(error);
+  }
+
+  // Récupérer la liste des éditeurs dans la liste des livres
+  const editeurs = books.map((book) => book.editeur);
+
+  // Récupérer la liste des genres dans la liste des livres
+  const genres = books.map((book) => book.genre);
+
+  // Récupérer la liste des formats dans la liste des livres
+  const formats = books.map((book) => book.format);
+
+  // Récupérer la liste des séries dans la liste des livres
+  const series = books.map((book) => book.serie);
+
+  // Récupérer seulement les noms des artistes
+  artistes = artistes.map((artiste) => artiste.nom);
+
+  const options = {
+    editeurs: [...new Set(editeurs)],
+    genres: [...new Set(genres)],
+    formats: [...new Set(formats)],
+    series: [...new Set(series)],
+    artistes,
+  };
+
+  res.status(200).json(options);
+};
+
 const createBook = async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     const error = new HttpError(
-      "Invalid inputs passed, please check your data.",
+      "Informations invalides, please check your data.",
       422
     );
     next(error);
@@ -118,24 +168,23 @@ const createBook = async (req, res, next) => {
     titre,
     serie,
     tome,
+    version,
     image,
     prix,
-    auteur,
+    auteurs,
     editeur,
     date_parution,
     format,
     genre,
-    dessinateur,
+    dessinateurs,
     type,
   } = req.body;
 
   const bookModel = {
     titre,
-    auteur,
     editeur,
     prix,
     image,
-    dessinateur,
     type: type || "Comics",
   };
 
@@ -144,21 +193,111 @@ const createBook = async (req, res, next) => {
   if (date_parution) bookModel.date_parution = date_parution;
   if (format) bookModel.format = format;
   if (genre) bookModel.genre = genre;
+  if (version) bookModel.version = version;
+
+  const auteursFromDB = [];
+
+  // Vérifier si chaque auteur existe ou non
+  for (const auteurName of auteurs) {
+    let auteur;
+    try {
+      auteur = await Artist.findOne({ nom: auteurName });
+    } catch (err) {
+      console.log(err);
+      const error = new HttpError(
+        "La recherche de l'artiste a échoué, veuillez réessayer.",
+        500
+      );
+      return next(error);
+    }
+
+    if (!auteur) {
+      // Si l'artiste n'existe pas, on le crée
+      const newArtist = new Artist({
+        nom: auteurName,
+        books: [],
+        auteur: true,
+        dessinateur: false,
+      });
+      try {
+        await newArtist.save();
+      } catch (err) {
+        console.log(err);
+        const error = new HttpError(
+          "La création de l'artiste a échoué, veuillez réessayer.",
+          500
+        );
+        return next(error);
+      }
+      auteur = newArtist;
+    }
+    auteursFromDB.push(auteur);
+  }
+
+  const dessinateursFromDB = [];
+
+  // Vérifier si chaque dessinateur existe ou non
+  for (const dessinateurName of dessinateurs) {
+    let dessinateur;
+    try {
+      dessinateur = await Artist.findOne({ nom: dessinateurName });
+    } catch (err) {
+      console.log(err);
+      const error = new HttpError(
+        "La recherche de l'artiste a échoué, veuillez réessayer.",
+        500
+      );
+      return next(error);
+    }
+
+    if (!dessinateur) {
+      // Si l'artiste n'existe pas, on le crée
+      const newArtist = new Artist({
+        nom: dessinateurName,
+        books: [],
+        auteur: false,
+        dessinateur: true,
+      });
+      try {
+        await newArtist.save();
+      } catch (err) {
+        console.log(err);
+        const error = new HttpError(
+          "La création de l'artiste a échoué, veuillez réessayer.",
+          500
+        );
+        return next(error);
+      }
+      dessinateur = newArtist;
+    }
+    dessinateursFromDB.push(dessinateur);
+  }
+
+  bookModel.auteurs = auteursFromDB;
+  bookModel.dessinateurs = dessinateursFromDB;
 
   const createdBook = new Book(bookModel);
 
   try {
-    await createdBook.save();
+    const sess = await mongoose.startSession();
+    sess.startTransaction();
+    await createdBook.save({ session: sess });
+
+    for (const auteur of auteursFromDB) {
+      auteur.books.push(createdBook);
+      await auteur.save({ session: sess });
+    }
+    for (const dessinateur of dessinateursFromDB) {
+      dessinateur.books.push(createdBook);
+      await dessinateur.save({ session: sess });
+    }
+    await sess.commitTransaction();
   } catch (err) {
     console.log(err);
-    const error = new HttpError(
-      "La création du livre a échoué, veuillez réessayer.",
-      500
-    );
-    return next(error);
+    const error = new HttpError("Creating book failed, please try again.", 500);
   }
 
-  res.status(201).json({ book: createdBook });
+  res.status(201).json({ bookId: createdBook.id });
 };
 
 // const updatePlace = async (req, res, next) => {
@@ -264,3 +403,6 @@ const createBook = async (req, res, next) => {
 exports.getBooks = getBooks;
 exports.createBook = createBook;
 exports.getBookById = getBookById;
+// exports.updatePlace = updatePlace;
+// exports.deletePlace = deletePlace;
+exports.getAllBooksInformation = getAllBooksInformation;
