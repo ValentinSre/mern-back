@@ -15,6 +15,7 @@ const bookSchema = new Schema({
   genre: { type: String, required: false },
   dessinateur: { type: String, required: true },
   type: { type: String, required: true },
+  version: { type: Number, required: false },
 });
 
 module.exports = mongoose.model("Book", bookSchema);
