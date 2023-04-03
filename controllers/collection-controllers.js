@@ -39,7 +39,8 @@ const getCollectionByUserId = async (req, res, next) => {
 
   const collectionToReturn = collection.map((coll) => {
     const { book, ...rest } = coll.toObject({ getters: true });
-    return { ...book, ...rest };
+    const { _id } = book;
+    return { ...book, ...rest, id_book: _id };
   });
 
   // Fetch editeurs
@@ -120,8 +121,63 @@ const addBookToCollection = async (req, res, next) => {
     }
   }
 
-  res.status(201).json({ books: updatedBooks });
+  res.status(201).json({ books: updatedBooks, success: true });
+};
+
+const editCollection = async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    const error = new HttpError(
+      "Invalid inputs passed, please check your data.",
+      422
+    );
+    next(error);
+  }
+
+  const { id_book, id_user, lu, lien, review, note } = req.body;
+
+  let collection;
+  try {
+    collection = await Collection.findOne({ book: id_book, owner: id_user });
+  } catch (err) {
+    const error = new HttpError(
+      "La création de la collection a échoué, veuillez réessayer.",
+      500
+    );
+    return next(error);
+  }
+
+  if (collection) {
+    if (lu) collection.lu = lu;
+    if (lu) collection.date_lecture = Date.now();
+    if (lien) collection.lien = lien;
+    if (review || lien) collection.critique = true;
+    if (review) collection.review = review;
+    if (note) collection.note = note;
+  } else {
+    const error = new HttpError(
+      "Ce livre n'existe pas dans votre collection.",
+      500
+    );
+    return next(error);
+  }
+
+  try {
+    await collection.save();
+  } catch (err) {
+    const error = new HttpError(
+      "La modification de la collection a échoué, veuillez réessayer.",
+      500
+    );
+    return next(error);
+  }
+
+  res.status(201).json({
+    success: true,
+    message: "La modification a bien été enregistrée !",
+  });
 };
 
 exports.getCollectionByUserId = getCollectionByUserId;
 exports.addBookToCollection = addBookToCollection;
+exports.editCollection = editCollection;

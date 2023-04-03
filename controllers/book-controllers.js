@@ -52,12 +52,12 @@ const getBooks = async (req, res, next) => {
 };
 
 const getBookById = async (req, res, next) => {
-  const book = req.params.bid;
+  const bookId = req.params.bid;
   const { user } = req.query;
 
   let bookById;
   try {
-    bookById = await Book.find({ _id: book }).populate([
+    bookById = await Book.findById(bookId).populate([
       { path: "auteurs", model: "Artist" },
       { path: "dessinateurs", model: "Artist" },
     ]);
@@ -70,9 +70,10 @@ const getBookById = async (req, res, next) => {
   }
 
   let collection;
+
   if (user) {
     try {
-      collection = await Collection.find({ owner: user });
+      collection = await Collection.find({ owner: user, book: bookId });
     } catch (err) {
       const error = new HttpError(
         "La collecte de livre a échoué (collection), veuillez réessayer...",
@@ -82,26 +83,32 @@ const getBookById = async (req, res, next) => {
     }
   }
 
-  console.log("collection", collection);
-
+  if (!bookById) {
+    const error = new HttpError(
+      "Impossible de trouver le livre avec l'identifiant fourni.",
+      404
+    );
+    return next(error);
+  }
+  let bookObj = bookById.toObject({ getters: true });
   // Regarder si le livre est dans la collection de l'utilisateur
   if (collection) {
-    const bookCollection = collection.find(
-      (col) => col.book.toString() === book
-    );
+    const bookCollection = collection[0];
+    console.log(bookCollection);
     if (bookCollection) {
-      bookById[0].souhaite = bookCollection.souhaite;
-      bookById[0].possede = bookCollection.possede;
-      bookById[0].critique = bookCollection.critique;
-      bookById[0].lu = bookCollection.lu;
-      bookById[0].note = bookCollection.note;
-      bookById[0].date_achat = bookCollection.date_achat;
-      bookById[0].lien = bookCollection.lien;
+      bookObj.souhaite = bookCollection.souhaite;
+      bookObj.possede = bookCollection.possede;
+      bookObj.critique = bookCollection.critique;
+      bookObj.lu = bookCollection.lu;
+      bookObj.note = bookCollection.note;
+      bookObj.date_achat = bookCollection.date_achat;
+      bookObj.lien = bookCollection.lien;
     }
+
+    // console.log(bookById);
   }
 
-  console.log("bookById", bookById);
-  res.status(200).json({ book: bookById[0].toObject({ getters: true }) });
+  res.status(200).json({ book: bookObj });
 };
 
 const getAllBooksInformation = async (req, res, next) => {
