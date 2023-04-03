@@ -54,10 +54,13 @@ const getBooks = async (req, res, next) => {
 const getBookById = async (req, res, next) => {
   const book = req.params.bid;
   const { user } = req.query;
-  console.log("book", book);
+
   let bookById;
   try {
-    bookById = await Book.find({ _id: book });
+    bookById = await Book.find({ _id: book }).populate([
+      { path: "auteurs", model: "Artist" },
+      { path: "dessinateurs", model: "Artist" },
+    ]);
   } catch (err) {
     const error = new HttpError(
       "La collecte de livre a échoué, veuillez réessayer...",
@@ -65,8 +68,6 @@ const getBookById = async (req, res, next) => {
     );
     return next(error);
   }
-
-  console.log("bookById", bookById);
 
   let collection;
   if (user) {
