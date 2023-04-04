@@ -186,6 +186,8 @@ const createBook = async (req, res, next) => {
     genre,
     dessinateurs,
     type,
+    poids,
+    planches,
   } = req.body;
 
   const bookModel = {
@@ -202,6 +204,8 @@ const createBook = async (req, res, next) => {
   if (format) bookModel.format = format;
   if (genre) bookModel.genre = genre;
   if (version) bookModel.version = version;
+  if (planches) bookModel.planches = planches;
+  if (poids) bookModel.poids = poids;
 
   const auteursFromDB = [];
 
