@@ -10,6 +10,8 @@ const bookSchema = new Schema({
   date_parution: { type: Date, required: false },
   tome: { type: Number, required: false },
   prix: { type: Number, required: true },
+  poids: { type: Number, required: false },
+  planches: { type: Number, required: false },
   image: { type: String, required: true },
   format: { type: String, required: false },
   genre: { type: String, required: false },
