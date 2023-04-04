@@ -27,11 +27,7 @@ router.post(
   bookControllers.createBook
 );
 
-// router.patch(
-//   "/:pid",
-//   [check("title").not().isEmpty(), check("description").isLength({ min: 5 })],
-//   placesControllers.updatePlace
-// );
+router.patch("/edit/:bid", bookControllers.updateBook);
 
 // router.delete("/:pid", placesControllers.deletePlace);
 
