@@ -137,19 +137,29 @@ const getAllBooksInformation = async (req, res, next) => {
   }
 
   // Récupérer la liste des éditeurs dans la liste des livres
-  const editeurs = books.map((book) => book.editeur);
+  const editeurs = books
+    .map((book) => book.editeur)
+    .filter((el) => el !== null && el !== undefined);
 
   // Récupérer la liste des genres dans la liste des livres
-  const genres = books.map((book) => book.genre);
+  const genres = books
+    .map((book) => book.genre)
+    .filter((el) => el !== null && el !== undefined);
 
   // Récupérer la liste des formats dans la liste des livres
-  const formats = books.map((book) => book.format);
+  const formats = books
+    .map((book) => book.format)
+    .filter((el) => el !== null && el !== undefined);
 
   // Récupérer la liste des séries dans la liste des livres
-  const series = books.map((book) => book.serie);
+  const series = books
+    .map((book) => book.serie)
+    .filter((el) => el !== null && el !== undefined);
 
   // Récupérer seulement les noms des artistes
-  artistes = artistes.map((artiste) => artiste.nom);
+  artistes = artistes
+    .map((artiste) => artiste.nom)
+    .filter((el) => el !== null && el !== undefined);
 
   const options = {
     editeurs: [...new Set(editeurs)],
