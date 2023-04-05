@@ -459,6 +459,17 @@ const deleteBook = async (req, res, next) => {
     return next(error);
   }
 
+  let collection;
+  try {
+    collection = Collection.find({ book: bookId });
+  } catch (err) {
+    const error = new HttpError(
+      "Impossible de retrouver les collections contenant ce livre",
+      500
+    );
+    return next(error);
+  }
+
   // Delete book and remove it from the artist's books array
   try {
     const sess = await mongoose.startSession();
@@ -471,6 +482,9 @@ const deleteBook = async (req, res, next) => {
     for (const dessinateur of book.dessinateurs) {
       dessinateur.books.pull(book);
       await dessinateur.save({ session: sess });
+    }
+    for (const col of collection) {
+      await col.deleteOne({ session: sess });
     }
     await sess.commitTransaction();
   } catch (err) {

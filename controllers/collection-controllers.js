@@ -39,8 +39,8 @@ const getCollectionByUserId = async (req, res, next) => {
 
   const collectionToReturn = collection.map((coll) => {
     const { book, ...rest } = coll.toObject({ getters: true });
-    const { _id } = book;
-    return { ...book, ...rest, id_book: _id };
+    const { id } = book;
+    return { ...book, ...rest, id_book: id };
   });
 
   // Fetch editeurs
@@ -53,6 +53,69 @@ const getCollectionByUserId = async (req, res, next) => {
 
   res.json({
     collection: collectionToReturn,
+    editeurs: editeurs,
+  });
+};
+
+const getWishlistByUserId = async (req, res, next) => {
+  const userId = req.params.uid;
+
+  let collection;
+
+  try {
+    collection = await Collection.find({
+      owner: userId,
+      souhaite: true,
+    }).populate({
+      path: "book",
+      populate: [
+        { path: "auteurs", model: "Artist" },
+        { path: "dessinateurs", model: "Artist" },
+      ],
+    });
+  } catch (err) {
+    const error = new HttpError(
+      "Fetching collection failed, please try again later",
+      500
+    );
+    return next(error);
+  }
+
+  if (!collection || collection.length === 0) {
+    return next(
+      new HttpError("La collection n'existe pas ou semble vide...", 404)
+    );
+  }
+
+  const collectionToReturn = collection.map((coll) => {
+    const { book, ...rest } = coll.toObject({ getters: true });
+    const { id } = book;
+    return { ...book, ...rest, id_book: id };
+  });
+
+  // Trier la wishlist entre deux listes : les livres déjà sortis et ceux qui ne le sont pas encore
+  const wishlistSortie = collectionToReturn.filter(
+    (coll) => new Date(coll.date_parution) < new Date()
+  );
+  const wishlistNonSortie = collectionToReturn.filter(
+    (coll) => new Date(coll.date_parution) >= new Date()
+  );
+
+  // Trier la wishlistSortie par date de sortie croissante
+  wishlistSortie.sort((a, b) => {
+    return new Date(a.sortie) - new Date(b.sortie);
+  });
+
+  let editeurs = [];
+  for (const coll of collectionToReturn) {
+    if (!editeurs.includes(coll.editeur)) {
+      editeurs.push(coll.editeur);
+    }
+  }
+
+  res.json({
+    available: wishlistSortie,
+    incoming: wishlistNonSortie,
     editeurs: editeurs,
   });
 };
@@ -181,3 +244,4 @@ const editCollection = async (req, res, next) => {
 exports.getCollectionByUserId = getCollectionByUserId;
 exports.addBookToCollection = addBookToCollection;
 exports.editCollection = editCollection;
+exports.getWishlistByUserId = getWishlistByUserId;

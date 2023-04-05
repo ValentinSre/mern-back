@@ -5,6 +5,7 @@ const checkAuth = require("../middleware/check-auth");
 
 const router = express.Router();
 
+router.get("/wishlist/:uid", collectionControllers.getWishlistByUserId);
 router.get("/:uid", collectionControllers.getCollectionByUserId);
 
 // Middleware pour protéger l'accès aux routes suivantes
