@@ -120,6 +120,55 @@ const getWishlistByUserId = async (req, res, next) => {
   });
 };
 
+const getCollectionStatsByUserId = async (req, res, next) => {
+  const userId = req.params.uid;
+
+  let collection;
+
+  try {
+    collection = await Collection.find({
+      owner: userId,
+    }).populate({
+      path: "book",
+      populate: [
+        { path: "auteurs", model: "Artist" },
+        { path: "dessinateurs", model: "Artist" },
+      ],
+    });
+  } catch (err) {
+    const error = new HttpError(
+      "Fetching collection failed, please try again later",
+      500
+    );
+    return next(error);
+  }
+
+  if (!collection || collection.length === 0) {
+    return next(
+      new HttpError("La collection n'existe pas ou semble vide...", 404)
+    );
+  }
+
+  const collectionToReturn = collection.map((coll) => {
+    const { book, ...rest } = coll.toObject({ getters: true });
+    const { id } = book;
+    return { ...book, ...rest, id_book: id };
+  });
+
+  // Fetch editeurs
+  let editeurs = [];
+  for (const coll of collectionToReturn) {
+    if (!editeurs.includes(coll.editeur)) {
+      editeurs.push(coll.editeur);
+    }
+  }
+
+  res.json({
+    collection: collectionToReturn,
+    editeurs: editeurs,
+  });
+};
+
 const addBookToCollection = async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -245,3 +294,4 @@ exports.getCollectionByUserId = getCollectionByUserId;
 exports.addBookToCollection = addBookToCollection;
 exports.editCollection = editCollection;
 exports.getWishlistByUserId = getWishlistByUserId;
+exports.getCollectionStatsByUserId = getCollectionStatsByUserId;
