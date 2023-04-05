@@ -8,6 +8,7 @@ const router = express.Router();
 
 router.get("/", bookControllers.getBooks);
 router.get("/all-information", bookControllers.getAllBooksInformation);
+router.get("/future-releases", bookControllers.getFutureReleases);
 router.get("/:bid", bookControllers.getBookById);
 
 // router.get("/user/:uid", placesControllers.getPlacesByUserId);
@@ -29,6 +30,6 @@ router.post(
 
 router.patch("/edit/:bid", bookControllers.updateBook);
 
-// router.delete("/:pid", placesControllers.deletePlace);
+router.delete("/:bid", bookControllers.deleteBook);
 
 module.exports = router;

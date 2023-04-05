@@ -94,7 +94,7 @@ const getBookById = async (req, res, next) => {
   // Regarder si le livre est dans la collection de l'utilisateur
   if (collection) {
     const bookCollection = collection[0];
-    console.log(bookCollection);
+
     if (bookCollection) {
       bookObj.souhaite = bookCollection.souhaite;
       bookObj.possede = bookCollection.possede;
@@ -104,11 +104,41 @@ const getBookById = async (req, res, next) => {
       bookObj.date_achat = bookCollection.date_achat;
       bookObj.lien = bookCollection.lien;
     }
-
-    // console.log(bookById);
   }
 
   res.status(200).json({ book: bookObj });
+};
+
+const getFutureReleases = async (req, res, next) => {
+  const maintenant = new Date();
+
+  const premierJourMoisCourant = new Date(
+    maintenant.getFullYear(),
+    maintenant.getMonth(),
+    1
+  );
+
+  premierJourMoisCourant.setHours(0, 0, 0, 0);
+
+  let books;
+
+  try {
+    books = await Book.find({
+      date_parution: { $gte: premierJourMoisCourant },
+    });
+  } catch (err) {
+    const error = new HttpError(
+      "La collecte de livres à venir a échoué, veuillez réessayer...",
+
+      500
+    );
+
+    return next(error);
+  }
+
+  console.log(books);
+
+  res.json({ books: books.map((book) => book.toObject({ getters: true })) });
 };
 
 const getAllBooksInformation = async (req, res, next) => {
@@ -404,62 +434,60 @@ const manageArtists = async (auteurs, dessinateurs) => {
   return { auteursFromDB, dessinateursFromDB };
 };
 
-// const deletePlace = async (req, res, next) => {
-//   const placeId = req.params.pid;
+const deleteBook = async (req, res, next) => {
+  const bookId = req.params.bid;
 
-//   let place;
-//   try {
-//     place = await Place.findById(placeId).populate("creator");
-//   } catch (err) {
-//     const error = new HttpError(
-//       "Something went wrong, could not delete place",
-//       500
-//     );
-//     return next(error);
-//   }
+  let book;
+  try {
+    book = await Book.findById(bookId).populate([
+      { path: "auteurs", model: "Artist" },
+      { path: "dessinateurs", model: "Artist" },
+    ]);
+  } catch (err) {
+    const error = new HttpError(
+      "Something went wrong, could not delete book",
+      500
+    );
+    return next(error);
+  }
 
-//   if (!place) {
-//     const error = new HttpError("Could not find place for this id", 404);
-//     return next(error);
-//   }
+  if (!book) {
+    const error = new HttpError(
+      "[DEL] Impossible de trouver le livre lié à cet id !",
+      404
+    );
+    return next(error);
+  }
 
-//   if (place.creator.id !== req.userData.userId) {
-//     const error = new HttpError(
-//       "You are not allowed to delete this place",
-//       401
-//     );
+  // Delete book and remove it from the artist's books array
+  try {
+    const sess = await mongoose.startSession();
+    sess.startTransaction();
+    await book.deleteOne({ session: sess });
+    for (const auteur of book.auteurs) {
+      auteur.books.pull(book);
+      await auteur.save({ session: sess });
+    }
+    for (const dessinateur of book.dessinateurs) {
+      dessinateur.books.pull(book);
+      await dessinateur.save({ session: sess });
+    }
+    await sess.commitTransaction();
+  } catch (err) {
+    const error = new HttpError(
+      "Something went wrong, could not delete book",
+      500
+    );
+    return next(error);
+  }
 
-//     return next(error);
-//   }
-
-//   const imagePath = place.image;
-
-//   try {
-//     const sess = await mongoose.startSession();
-//     sess.startTransaction();
-//     await place.deleteOne({ session: sess });
-//     place.creator.places.pull(place);
-//     await place.creator.save({ session: sess });
-//     await sess.commitTransaction();
-//   } catch (err) {
-//     console.log(place, err);
-//     const error = new HttpError(
-//       "Something went wrong, couldnt delete place",
-//       500
-//     );
-//     return next(error);
-//   }
-
-//   fs.unlink(imagePath, (err) => {
-//     console.log(err);
-//   });
-
-//   res.status(200).json({ message: "Deleted place!" });
-// };
+  res.status(200).json({ message: "Deleted place!" });
+};
 
 exports.getBooks = getBooks;
 exports.createBook = createBook;
+exports.getFutureReleases = getFutureReleases;
 exports.getBookById = getBookById;
 exports.updateBook = updateBook;
-// exports.deletePlace = deletePlace;
+exports.deleteBook = deleteBook;
 exports.getAllBooksInformation = getAllBooksInformation;
