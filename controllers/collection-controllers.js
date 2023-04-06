@@ -179,9 +179,7 @@ const addBookToCollection = async (req, res, next) => {
     next(error);
   }
 
-  const { ids_book, id_user, list_name, books } = req.body;
-
-  let updatedBooks = books.slice(); // Créer une copie du tableau de livres
+  const { ids_book, id_user, list_name } = req.body;
 
   for (const id_book of ids_book) {
     let collection;
@@ -220,20 +218,9 @@ const addBookToCollection = async (req, res, next) => {
       );
       return next(error);
     }
-
-    // Mettre à jour la liste de livres où on ajoute la collection
-    const bookIndex = updatedBooks.findIndex((b) => b.id === id_book);
-    if (bookIndex >= 0) {
-      if (list_name === "collection") {
-        updatedBooks[bookIndex].possede = true;
-        updatedBooks[bookIndex].souhaite = false;
-      } else if (list_name === "wishlist" && !updatedBooks[bookIndex].possede) {
-        updatedBooks[bookIndex].souhaite = true;
-      }
-    }
   }
 
-  res.status(201).json({ books: updatedBooks, success: true });
+  res.status(201).json({ success: true });
 };
 
 const editCollection = async (req, res, next) => {
