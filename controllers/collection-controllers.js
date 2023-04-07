@@ -179,7 +179,7 @@ const addBookToCollection = async (req, res, next) => {
     next(error);
   }
 
-  const { ids_book, id_user, list_name } = req.body;
+  const { ids_book, id_user, list_name, book } = req.body;
 
   for (const id_book of ids_book) {
     let collection;
@@ -220,7 +220,17 @@ const addBookToCollection = async (req, res, next) => {
     }
   }
 
-  res.status(201).json({ success: true });
+  // if book, update book
+  if (book) {
+    if (list_name === "collection") {
+      book.possede = true;
+      book.souhaite = false;
+    } else if (list_name === "wishlist" && !book.possede) {
+      book.souhaite = true;
+    }
+  }
+
+  res.status(201).json({ success: true, book: book });
 };
 
 const editCollection = async (req, res, next) => {
