@@ -11,7 +11,10 @@ const getBooks = async (req, res, next) => {
 
   let books;
   try {
-    books = await Book.find();
+    books = await Book.find().populate([
+      { path: "auteurs", model: "Artist" },
+      { path: "dessinateurs", model: "Artist" },
+    ]);
   } catch (err) {
     const error = new HttpError(
       "La collecte de livres a échoué, veuillez réessayer...",
