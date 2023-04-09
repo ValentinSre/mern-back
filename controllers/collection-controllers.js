@@ -179,7 +179,7 @@ const addBookToCollection = async (req, res, next) => {
     next(error);
   }
 
-  const { ids_book, id_user, list_name, book } = req.body;
+  const { ids_book, id_user, list_name, book, date_achat } = req.body;
 
   for (const id_book of ids_book) {
     let collection;
@@ -197,6 +197,7 @@ const addBookToCollection = async (req, res, next) => {
       if (list_name === "collection") {
         collection.possede = true;
         collection.souhaite = false;
+        if (date_achat) collection.date_achat = date_achat;
       } else if (list_name === "wishlist" && !collection.possede) {
         collection.souhaite = true;
       }
@@ -206,6 +207,7 @@ const addBookToCollection = async (req, res, next) => {
         owner: id_user,
         possede: list_name === "collection" ? true : false,
         souhaite: list_name === "wishlist" ? true : false,
+        date_achat: list_name === "collection" ? date_achat : null,
       });
     }
 
@@ -225,6 +227,7 @@ const addBookToCollection = async (req, res, next) => {
     if (list_name === "collection") {
       book.possede = true;
       book.souhaite = false;
+      if (date_achat) book.date_achat = date_achat;
     } else if (list_name === "wishlist" && !book.possede) {
       book.souhaite = true;
     }
@@ -243,7 +246,7 @@ const editCollection = async (req, res, next) => {
     next(error);
   }
 
-  const { id_book, id_user, lu, lien, review, note } = req.body;
+  const { id_book, id_user, lu, lien, review, note, date_lecture } = req.body;
 
   let collection;
   try {
@@ -258,7 +261,7 @@ const editCollection = async (req, res, next) => {
 
   if (collection) {
     if (lu) collection.lu = lu;
-    if (lu) collection.date_lecture = Date.now();
+    if (date_lecture) collection.date_lecture = date_lecture;
     if (lien) collection.lien = lien;
     if (review || lien) collection.critique = true;
     if (review) collection.review = review;
