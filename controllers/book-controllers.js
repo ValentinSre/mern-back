@@ -462,9 +462,9 @@ const deleteBook = async (req, res, next) => {
     return next(error);
   }
 
-  let collection;
+  let collections;
   try {
-    collection = Collection.find({ book: bookId });
+    collections = await Collection.find({ book: bookId });
   } catch (err) {
     const error = new HttpError(
       "Impossible de retrouver les collections contenant ce livre",
@@ -473,24 +473,33 @@ const deleteBook = async (req, res, next) => {
     return next(error);
   }
 
-  // Delete book and remove it from the artist's books array
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
-    const sess = await mongoose.startSession();
-    sess.startTransaction();
-    await book.deleteOne({ session: sess });
+    // Remove the book from the collections
+    for (const collection of collections) {
+      await collection.deleteOne({ session });
+    }
+
+    // Remove the book from the artists' book arrays
     for (const auteur of book.auteurs) {
       auteur.books.pull(book);
-      await auteur.save({ session: sess });
+      await auteur.save({ session });
     }
     for (const dessinateur of book.dessinateurs) {
       dessinateur.books.pull(book);
-      await dessinateur.save({ session: sess });
+      await dessinateur.save({ session });
     }
-    for (const col of collection) {
-      await col.deleteOne({ session: sess });
-    }
-    await sess.commitTransaction();
+
+    // Delete the book
+    await book.deleteOne({ session });
+
+    await session.commitTransaction();
   } catch (err) {
+    await session.abortTransaction();
+    session.endSession();
+
     const error = new HttpError(
       "Something went wrong, could not delete book",
       500
@@ -498,7 +507,9 @@ const deleteBook = async (req, res, next) => {
     return next(error);
   }
 
-  res.status(200).json({ message: "Deleted place!" });
+  session.endSession();
+
+  res.status(200).json({ message: "Le livre a été supprimé !" });
 };
 
 exports.getBooks = getBooks;
