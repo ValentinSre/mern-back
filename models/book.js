@@ -16,7 +16,7 @@ const bookSchema = new Schema({
   format: { type: String, required: false },
   genre: { type: String, required: false },
   dessinateurs: [
-    { type: mongoose.Types.ObjectId, required: true, ref: "Artist" },
+    { type: mongoose.Types.ObjectId, required: false, ref: "Artist" },
   ],
   type: { type: String, required: true },
   version: { type: Number, required: false },
