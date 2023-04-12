@@ -5,7 +5,6 @@ const path = require("path");
 const mongoose = require("mongoose");
 
 const HttpError = require("./models/http-error");
-const placesRoutes = require("./routes/places-routes");
 const usersRoutes = require("./routes/users-routes");
 const collectionRoutes = require("./routes/collection-routes");
 const bookRoutes = require("./routes/book-routes");
@@ -28,7 +27,6 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use("/api/places", placesRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/collection", collectionRoutes);
 app.use("/api/book", bookRoutes);
