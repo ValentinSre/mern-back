@@ -130,16 +130,13 @@ const getWishlistByUserId = async (req, res, next) => {
   let collection;
 
   try {
-    collection = await Collection.find({
-      owner: userId,
-      souhaite: true,
-    }).populate({
-      path: "book",
-      populate: [
-        { path: "auteurs", model: "Artist" },
-        { path: "dessinateurs", model: "Artist" },
-      ],
-    });
+    collection = await Collection.find({ owner: userId, souhaite: true })
+      .select("-possede -date_achat -date_lecture -review -lien -lu -critique")
+      .populate({
+        path: "book",
+        select:
+          "-auteurs -poids -planches -format -genre -dessinateurs -type -editeur",
+      });
   } catch (err) {
     const error = new HttpError(
       "Fetching collection failed, please try again later",
@@ -160,30 +157,14 @@ const getWishlistByUserId = async (req, res, next) => {
     return { ...book, ...rest, id_book: id };
   });
 
-  // Trier la wishlist entre deux listes : les livres déjà sortis et ceux qui ne le sont pas encore
-  const wishlistSortie = collectionToReturn.filter(
-    (coll) => new Date(coll.date_parution) < new Date()
-  );
-  const wishlistNonSortie = collectionToReturn.filter(
-    (coll) => new Date(coll.date_parution) >= new Date()
-  );
-
-  // Trier la wishlistSortie par date de sortie croissante
-  wishlistSortie.sort((a, b) => {
-    return new Date(a.sortie) - new Date(b.sortie);
+  collectionToReturn.sort((a, b) => {
+    const { titre: titreA } = a;
+    const { titre: titreB } = b;
+    return titreA.localeCompare(titreB);
   });
 
-  let editeurs = [];
-  for (const coll of collectionToReturn) {
-    if (!editeurs.includes(coll.editeur)) {
-      editeurs.push(coll.editeur);
-    }
-  }
-
   res.json({
-    available: wishlistSortie,
-    incoming: wishlistNonSortie,
-    editeurs: editeurs,
+    wishlist: collectionToReturn,
   });
 };
 
