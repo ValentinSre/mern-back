@@ -15,10 +15,13 @@ const getCollectionByUserId = async (req, res, next) => {
   let collection;
 
   try {
-    collection = await Collection.find({
-      owner: userId,
-      possede: true,
-    }).populate("book");
+    collection = await Collection.find({ owner: userId, possede: true })
+      .select("-souhaite -date_achat -date_lecture -review -lien")
+      .populate({
+        path: "book",
+        select:
+          "-auteurs -date_parution -poids -planches -format -genre -dessinateurs",
+      });
   } catch (err) {
     const error = new HttpError(
       "La recherche de la collection de l'utilisateur a échoué.",
