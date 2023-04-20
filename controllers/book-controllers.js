@@ -140,8 +140,6 @@ const getFutureReleases = async (req, res, next) => {
     return next(error);
   }
 
-  console.log(books);
-
   res.json({ books: books.map((book) => book.toObject({ getters: true })) });
 };
 

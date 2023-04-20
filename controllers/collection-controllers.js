@@ -168,6 +168,65 @@ const getWishlistByUserId = async (req, res, next) => {
   });
 };
 
+const getFutureWishlistByUserId = async (req, res, next) => {
+  const userId = req.params.uid;
+
+  const maintenant = new Date();
+
+  const premierJourMoisCourant = new Date(
+    maintenant.getFullYear(),
+    maintenant.getMonth(),
+    1
+  );
+
+  premierJourMoisCourant.setHours(0, 0, 0, 0);
+
+  let collection;
+
+  try {
+    collection = await Collection.find({ owner: userId, souhaite: true })
+      .select("-possede -date_achat -date_lecture -review -lien -lu -critique")
+      .populate({
+        path: "book",
+        select:
+          "-auteurs -poids -planches -format -genre -dessinateurs -type -editeur",
+      });
+  } catch (err) {
+    const error = new HttpError(
+      "Fetching collection failed, please try again later",
+      500
+    );
+    return next(error);
+  }
+
+  if (!collection || collection.length === 0) {
+    return next(
+      new HttpError("La collection n'existe pas ou semble vide...", 404)
+    );
+  }
+
+  const collectionToReturn = collection
+    .filter((coll) => {
+      const { date_parution: dateSortie } = coll.book;
+      return dateSortie > premierJourMoisCourant;
+    })
+    .map((coll) => {
+      const { book } = coll.toObject({ getters: true });
+      return { ...book };
+    });
+
+  collectionToReturn.sort((a, b) => {
+    const { titre: titreA } = a;
+    const { titre: titreB } = b;
+    return titreA.localeCompare(titreB);
+  });
+
+  console.log(collectionToReturn);
+  res.json({
+    wishlist: collectionToReturn,
+  });
+};
+
 const getCollectionStatsByUserId = async (req, res, next) => {
   const userId = req.params.uid;
 
@@ -343,3 +402,4 @@ exports.addBookToCollection = addBookToCollection;
 exports.editCollection = editCollection;
 exports.getWishlistByUserId = getWishlistByUserId;
 exports.getCollectionStatsByUserId = getCollectionStatsByUserId;
+exports.getFutureWishlistByUserId = getFutureWishlistByUserId;
