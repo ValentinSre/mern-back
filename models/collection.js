@@ -10,7 +10,7 @@ const collectionSchema = new Schema({
   critique: { type: Boolean, required: false },
   souhaite: { type: Boolean, required: true },
   date_achat: { type: Date, required: false },
-  date_lecture: { type: Date, required: false },
+  read_dates: [{ type: Date, required: false }],
   review: { type: String, required: false },
   lien: { type: String, required: false },
   note: { type: Number, required: false },

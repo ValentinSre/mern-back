@@ -16,7 +16,7 @@ const getCollectionByUserId = async (req, res, next) => {
 
   try {
     collection = await Collection.find({ owner: userId, possede: true })
-      .select("-souhaite -date_achat -date_lecture -review -lien")
+      .select("-souhaite -date_achat -read_dates -review -lien")
       .populate({
         path: "book",
         select:
@@ -131,7 +131,7 @@ const getWishlistByUserId = async (req, res, next) => {
 
   try {
     collection = await Collection.find({ owner: userId, souhaite: true })
-      .select("-possede -date_achat -date_lecture -review -lien -lu -critique")
+      .select("-possede -date_achat -read_dates -review -lien -lu -critique")
       .populate({
         path: "book",
         select:
@@ -185,7 +185,7 @@ const getFutureWishlistByUserId = async (req, res, next) => {
 
   try {
     collection = await Collection.find({ owner: userId, souhaite: true })
-      .select("-possede -date_achat -date_lecture -review -lien -lu -critique")
+      .select("-possede -date_achat -read_dates -review -lien -lu -critique")
       .populate({
         path: "book",
         select:
@@ -366,16 +366,26 @@ const editCollection = async (req, res, next) => {
     return next(error);
   }
 
+  if (!collection) {
+    // create collection
+    collection = new Collection({
+      book: id_book,
+      owner: id_user,
+      souhaite: false,
+      possede: false,
+    });
+  }
+
   if (collection) {
     if (lu) collection.lu = lu;
-    if (date_lecture) collection.date_lecture = date_lecture;
+    if (date_lecture) collection.read_dates.push(date_lecture);
     if (lien) collection.lien = lien;
     if (review || lien) collection.critique = true;
     if (review) collection.review = review;
     if (note) collection.note = note;
   } else {
     const error = new HttpError(
-      "Ce livre n'existe pas dans votre collection.",
+      "La création du lien avec ce livre a échoué, veuillez réessayer.",
       500
     );
     return next(error);

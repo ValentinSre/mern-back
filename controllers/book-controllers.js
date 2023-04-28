@@ -104,7 +104,7 @@ const getBookById = async (req, res, next) => {
       bookObj.critique = bookCollection.critique;
       bookObj.lu = bookCollection.lu;
       bookObj.note = bookCollection.note;
-      bookObj.date_lecture = bookCollection.date_lecture;
+      bookObj.read_dates = bookCollection.read_dates;
       bookObj.date_achat = bookCollection.date_achat;
       bookObj.lien = bookCollection.lien;
     }
