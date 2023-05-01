@@ -144,64 +144,37 @@ const getFutureReleases = async (req, res, next) => {
 };
 
 const getAllBooksInformation = async (req, res, next) => {
-  // Récupérer les informations des livres
-  let books;
   try {
-    books = await Book.find();
+    const editeurs = await Book.distinct("editeur", {
+      editeur: { $ne: null, $ne: undefined },
+    });
+    const genres = await Book.distinct("genre", {
+      genre: { $ne: null, $ne: undefined },
+    });
+    const formats = await Book.distinct("format", {
+      format: { $ne: null, $ne: undefined },
+    });
+    const series = await Book.distinct("serie", {
+      serie: { $ne: null, $ne: undefined },
+    });
+    const artistes = await Artist.find({}, { nom: 1, _id: 0 }).lean().exec();
+
+    const options = {
+      editeurs,
+      genres,
+      formats,
+      series,
+      artistes,
+    };
+
+    res.status(200).json(options);
   } catch (err) {
     const error = new HttpError(
-      "La collecte de livres a échoué, veuillez réessayer...",
+      "La collecte d'informations sur les livres a échoué, veuillez réessayer...",
       500
     );
     return next(error);
   }
-
-  // Récupérer les informations des auteurs
-  let artistes;
-  try {
-    artistes = await Artist.find();
-  } catch (err) {
-    const error = new HttpError(
-      "La collecte des artistes a échoué, veuillez réessayer...",
-      500
-    );
-    return next(error);
-  }
-
-  // Récupérer la liste des éditeurs dans la liste des livres
-  const editeurs = books
-    .map((book) => book.editeur)
-    .filter((el) => el !== null && el !== undefined);
-
-  // Récupérer la liste des genres dans la liste des livres
-  const genres = books
-    .map((book) => book.genre)
-    .filter((el) => el !== null && el !== undefined);
-
-  // Récupérer la liste des formats dans la liste des livres
-  const formats = books
-    .map((book) => book.format)
-    .filter((el) => el !== null && el !== undefined);
-
-  // Récupérer la liste des séries dans la liste des livres
-  const series = books
-    .map((book) => book.serie)
-    .filter((el) => el !== null && el !== undefined);
-
-  // Récupérer seulement les noms des artistes
-  artistes = artistes
-    .map((artiste) => artiste.nom)
-    .filter((el) => el !== null && el !== undefined);
-
-  const options = {
-    editeurs: [...new Set(editeurs)],
-    genres: [...new Set(genres)],
-    formats: [...new Set(formats)],
-    series: [...new Set(series)],
-    artistes,
-  };
-
-  res.status(200).json(options);
 };
 
 const createBook = async (req, res, next) => {

@@ -237,10 +237,7 @@ const getCollectionStatsByUserId = async (req, res, next) => {
       owner: userId,
     }).populate({
       path: "book",
-      populate: [
-        { path: "auteurs", model: "Artist" },
-        { path: "dessinateurs", model: "Artist" },
-      ],
+      select: "-auteurs -format -genre -dessinateurs",
     });
   } catch (err) {
     const error = new HttpError(
