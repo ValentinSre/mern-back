@@ -157,7 +157,7 @@ const getAllBooksInformation = async (req, res, next) => {
     const series = await Book.distinct("serie", {
       serie: { $ne: null, $ne: undefined },
     });
-    const artistes = await Artist.find({}, { nom: 1, _id: 0 }).lean().exec();
+    const artistes = await Artist.distinct("nom", {});
 
     const options = {
       editeurs,
