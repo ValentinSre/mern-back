@@ -364,9 +364,64 @@ const editCollection = async (req, res, next) => {
   });
 };
 
+const deleteWishlist = async (req, res, next) => {
+  const userId = req.params.uid;
+  const bookId = req.params.bid;
+
+  let wishlist;
+  try {
+    wishlist = await Collection.findOne({
+      owner: userId,
+      book: bookId,
+      souhaite: true,
+    });
+  } catch (err) {
+    const error = new HttpError(
+      "La suppression a échoué, veuillez réessayer.",
+      500
+    );
+    return next(error);
+  }
+
+  if (!wishlist) {
+    const error = new HttpError(
+      "L'élément ne semble pas être dans votre wishlist, veuillez réessayer.",
+      500
+    );
+    return next(error);
+  }
+
+  if (wishlist.lu === true) {
+    wishlist.souhaite = false;
+
+    try {
+      await wishlist.save();
+    } catch (err) {
+      const error = new HttpError(
+        "La suppression a échoué, veuillez réessayer.",
+        500
+      );
+      return next(error);
+    }
+  } else {
+    try {
+      await wishlist.remove();
+    } catch (err) {
+      const error = new HttpError(
+        "La suppression a échoué, veuillez réessayer.",
+        500
+      );
+      return next(error);
+    }
+  }
+
+  res.status(200).json({ success: true, message: "Livre supprimé !" });
+};
+
 exports.getCollectionByUserId = getCollectionByUserId;
 exports.addBookToCollection = addBookToCollection;
 exports.editCollection = editCollection;
 exports.getWishlistByUserId = getWishlistByUserId;
 exports.getCollectionStatsByUserId = getCollectionStatsByUserId;
 exports.getFutureWishlistByUserId = getFutureWishlistByUserId;
+exports.deleteWishlist = deleteWishlist;

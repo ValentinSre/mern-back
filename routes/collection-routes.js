@@ -18,4 +18,6 @@ router.use(checkAuth);
 router.post("/add", collectionControllers.addBookToCollection);
 router.post("/edit", collectionControllers.editCollection);
 
+router.delete("/wishlist/:uid/:bid", collectionControllers.deleteWishlist);
+
 module.exports = router;
