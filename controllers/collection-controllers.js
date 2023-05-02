@@ -406,8 +406,6 @@ const deleteWishlist = async (req, res, next) => {
   const userId = req.params.uid;
   const bookId = req.params.bid;
 
-  console.log(userId, bookId);
-
   let wishlist;
   try {
     wishlist = await Collection.findOne({
@@ -422,8 +420,6 @@ const deleteWishlist = async (req, res, next) => {
     );
     return next(error);
   }
-
-  console.log(wishlist);
 
   if (!wishlist) {
     const error = new HttpError(
@@ -447,7 +443,7 @@ const deleteWishlist = async (req, res, next) => {
     }
   } else {
     try {
-      await wishlist.remove();
+      await wishlist.deleteOne();
     } catch (err) {
       const error = new HttpError(
         "La suppression a échoué, veuillez réessayer.",
