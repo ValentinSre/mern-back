@@ -147,7 +147,8 @@ const getWishlistByUserId = async (req, res, next) => {
 
   const collectionToReturn = collection.map((coll) => {
     const { book } = coll;
-    const { id, titre, image } = book;
+    const { id, titre, image, serie, date_parution, tome, prix, version } =
+      book;
     return {
       id_book: id,
       titre,
@@ -181,11 +182,7 @@ const getFutureWishlistByUserId = async (req, res, next) => {
   let collection;
 
   try {
-    collection = await Collection.find({
-      owner: userId,
-      souhaite: true,
-      "book.date_parution": { $gt: premierJourMoisCourant },
-    })
+    collection = await Collection.find({ owner: userId, souhaite: true })
       .select("-possede -date_achat -read_dates -review -lien -lu -critique")
       .populate({
         path: "book",
@@ -206,10 +203,15 @@ const getFutureWishlistByUserId = async (req, res, next) => {
     );
   }
 
-  const collectionToReturn = collection.map((coll) => {
-    const { book } = coll.toObject({ getters: true });
-    return { ...book };
-  });
+  const collectionToReturn = collection
+    .filter((coll) => {
+      const { date_parution: dateSortie } = coll.book;
+      return dateSortie > premierJourMoisCourant;
+    })
+    .map((coll) => {
+      const { book } = coll.toObject({ getters: true });
+      return { ...book };
+    });
 
   collectionToReturn.sort((a, b) => {
     const { titre: titreA } = a;
@@ -217,6 +219,7 @@ const getFutureWishlistByUserId = async (req, res, next) => {
     return titreA.localeCompare(titreB);
   });
 
+  console.log(collectionToReturn);
   res.json({
     wishlist: collectionToReturn,
   });
