@@ -127,7 +127,7 @@ const getWishlistByUserId = async (req, res, next) => {
       .select("book")
       .populate({
         path: "book",
-        select: "id serie titre date_parution tome prix image version",
+        select: "_id serie titre date_parution tome prix image version",
       })
       .sort({ titre: 1 })
       .lean();
@@ -147,10 +147,10 @@ const getWishlistByUserId = async (req, res, next) => {
 
   const collectionToReturn = collection.map((coll) => {
     const { book } = coll;
-    const { id, titre, image, serie, date_parution, tome, prix, version } =
+    const { _id, titre, image, serie, date_parution, tome, prix, version } =
       book;
     return {
-      id_book: id,
+      id_book: _id,
       titre,
       image,
       serie,
