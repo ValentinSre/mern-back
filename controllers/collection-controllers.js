@@ -124,7 +124,7 @@ const getWishlistByUserId = async (req, res, next) => {
 
   try {
     collection = await Collection.find({ owner: userId, souhaite: true })
-      .select("owner book souhaite")
+      .select("book")
       .populate({
         path: "book",
         select: "id serie titre date_parution tome prix image version",
@@ -147,8 +147,17 @@ const getWishlistByUserId = async (req, res, next) => {
 
   const collectionToReturn = collection.map((coll) => {
     const { book } = coll;
-    const { id, titre, couverture } = book;
-    return { id_book: id, titre, couverture };
+    const { id, titre, image } = book;
+    return {
+      id_book: id,
+      titre,
+      image,
+      serie,
+      date_parution,
+      tome,
+      prix,
+      version,
+    };
   });
 
   res.json({
@@ -177,12 +186,11 @@ const getFutureWishlistByUserId = async (req, res, next) => {
       souhaite: true,
       "book.date_parution": { $gt: premierJourMoisCourant },
     })
-      .select("book")
+      .select("-possede -date_achat -read_dates -review -lien -lu -critique")
       .populate({
         path: "book",
         select:
           "-auteurs -poids -planches -format -genre -dessinateurs -type -editeur",
-        options: { sort: { titre: 1 } },
       });
   } catch (err) {
     const error = new HttpError(
@@ -201,6 +209,12 @@ const getFutureWishlistByUserId = async (req, res, next) => {
   const collectionToReturn = collection.map((coll) => {
     const { book } = coll.toObject({ getters: true });
     return { ...book };
+  });
+
+  collectionToReturn.sort((a, b) => {
+    const { titre: titreA } = a;
+    const { titre: titreB } = b;
+    return titreA.localeCompare(titreB);
   });
 
   res.json({
