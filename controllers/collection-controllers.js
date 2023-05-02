@@ -9,7 +9,6 @@ const { validationResult } = require("express-validator");
 
 const getCollectionByUserId = async (req, res, next) => {
   const userId = req.params.uid;
-  // find the query params : displayMode
   const displayMode = req.query.displayMode;
 
   let collection;
@@ -43,78 +42,51 @@ const getCollectionByUserId = async (req, res, next) => {
   });
 
   // Fetch editeurs
-  let editeurs = [];
-  for (const coll of collectionWithBookId) {
-    if (!editeurs.includes(coll.editeur)) {
-      editeurs.push(coll.editeur);
-    }
-  }
+  const editeursSet = new Set(collectionWithBookId.map((coll) => coll.editeur));
+  const editeurs = Array.from(editeursSet);
 
   let collectionToReturn = [];
   if (displayMode === "bySeries") {
-    for (const coll of collectionWithBookId) {
-      const { serie, version, titre } = coll;
-      const serieToUse = serie ? serie : titre;
-      const versionToUse = version ? " (v" + version + ")" : "";
-      const serieToUseWithVersion = serieToUse + versionToUse;
-      const serieIndex = collectionToReturn.findIndex(
-        (serie) => serie.serie === serieToUseWithVersion
-      );
-      if (serieIndex === -1) {
-        collectionToReturn.push({
-          serie: serieToUseWithVersion,
-          books: [coll],
-        });
-      } else {
-        collectionToReturn[serieIndex].books.push(coll);
-      }
+    const seriesMap = new Map();
+
+    for (const { serie, version, titre, tome } of collectionWithBookId) {
+      const seriesName = serie ? serie : titre;
+      const seriesVersion = version ? " (v" + version + ")" : "";
+      const seriesFullName = seriesName + seriesVersion;
+
+      const series = seriesMap.get(seriesFullName) || {
+        serie: seriesFullName,
+        books: [],
+      };
+      series.books.push({ serie, version, titre, tome });
+
+      seriesMap.set(seriesFullName, series);
     }
 
-    for (const serie of collectionToReturn) {
-      serie.books.sort((a, b) => {
-        if (a.tome && b.tome) {
-          return a.tome - b.tome;
-        } else if (a.tome) {
-          return -1;
-        } else if (b.tome) {
-          return 1;
-        } else {
-          return 0;
-        }
-      });
-    }
+    const collectionToReturn = [...seriesMap.values()];
+    collectionToReturn.forEach((serie) => {
+      serie.books.sort((a, b) =>
+        a.tome && b.tome ? a.tome - b.tome : a.tome ? -1 : b.tome ? 1 : 0
+      );
+    });
 
     collectionToReturn.sort((a, b) => {
       return a.serie.localeCompare(b.serie);
     });
   } else {
-    // sort by alphabetical order of the book title : the title is the serie + version + tome + titre (if serie, tome and version are not null) or the titre (if serie, tome and version are null
     collectionToReturn = collectionWithBookId.sort((a, b) => {
-      const {
-        serie: serieA,
-        tome: tomeA,
-        version: versionA,
-        titre: titreA,
-      } = a;
-      const {
-        serie: serieB,
-        tome: tomeB,
-        version: versionB,
-        titre: titreB,
-      } = b;
-      const serieToUseA = serieA ? serieA : titreA;
-      const versionToUseA = versionA ? " (v" + versionA + ")" : "";
-      const tomeToUseA = tomeA ? " - tome " + tomeA : "";
-      const serieToUseWithVersionAndTomeA =
-        serieToUseA + versionToUseA + tomeToUseA;
-      const serieToUseB = serieB ? serieB : titreB;
-      const versionToUseB = versionB ? " (v" + versionB + ")" : "";
-      const tomeToUseB = tomeB ? " - tome " + tomeB : "";
-      const serieToUseWithVersionAndTomeB =
-        serieToUseB + versionToUseB + tomeToUseB;
-      return serieToUseWithVersionAndTomeA.localeCompare(
-        serieToUseWithVersionAndTomeB
-      );
+      const getStringForSorting = (book) => {
+        const { serie, tome, version, titre } = book;
+        const serieToUse = serie || titre;
+        const versionToUse = version ? ` (v${version})` : "";
+        const tomeToUse = tome ? ` - tome ${tome}` : "";
+        return `${serieToUse}${versionToUse}${tomeToUse}${titre}`;
+      };
+
+      const stringA = getStringForSorting(a);
+      const stringB = getStringForSorting(b);
+
+      return stringA.localeCompare(stringB);
     });
   }
 
@@ -131,12 +103,13 @@ const getWishlistByUserId = async (req, res, next) => {
 
   try {
     collection = await Collection.find({ owner: userId, souhaite: true })
-      .select("-possede -date_achat -read_dates -review -lien -lu -critique")
+      .select("owner book souhaite")
       .populate({
         path: "book",
-        select:
-          "-auteurs -poids -planches -format -genre -dessinateurs -type -editeur",
-      });
+        select: "id serie titre date_parution tome prix image version",
+      })
+      .sort({ titre: 1 })
+      .lean();
   } catch (err) {
     const error = new HttpError(
       "Fetching collection failed, please try again later",
@@ -152,15 +125,9 @@ const getWishlistByUserId = async (req, res, next) => {
   }
 
   const collectionToReturn = collection.map((coll) => {
-    const { book, ...rest } = coll.toObject({ getters: true });
-    const { id } = book;
-    return { ...book, ...rest, id_book: id };
-  });
-
-  collectionToReturn.sort((a, b) => {
-    const { titre: titreA } = a;
-    const { titre: titreB } = b;
-    return titreA.localeCompare(titreB);
+    const { book } = coll;
+    const { id, titre, couverture } = book;
+    return { id_book: id, titre, couverture };
   });
 
   res.json({
@@ -184,12 +151,17 @@ const getFutureWishlistByUserId = async (req, res, next) => {
   let collection;
 
   try {
-    collection = await Collection.find({ owner: userId, souhaite: true })
-      .select("-possede -date_achat -read_dates -review -lien -lu -critique")
+    collection = await Collection.find({
+      owner: userId,
+      souhaite: true,
+      "book.date_parution": { $gt: premierJourMoisCourant },
+    })
+      .select("book")
       .populate({
         path: "book",
         select:
           "-auteurs -poids -planches -format -genre -dessinateurs -type -editeur",
+        options: { sort: { titre: 1 } },
       });
   } catch (err) {
     const error = new HttpError(
@@ -205,23 +177,11 @@ const getFutureWishlistByUserId = async (req, res, next) => {
     );
   }
 
-  const collectionToReturn = collection
-    .filter((coll) => {
-      const { date_parution: dateSortie } = coll.book;
-      return dateSortie > premierJourMoisCourant;
-    })
-    .map((coll) => {
-      const { book } = coll.toObject({ getters: true });
-      return { ...book };
-    });
-
-  collectionToReturn.sort((a, b) => {
-    const { titre: titreA } = a;
-    const { titre: titreB } = b;
-    return titreA.localeCompare(titreB);
+  const collectionToReturn = collection.map((coll) => {
+    const { book } = coll.toObject({ getters: true });
+    return { ...book };
   });
 
-  console.log(collectionToReturn);
   res.json({
     wishlist: collectionToReturn,
   });
