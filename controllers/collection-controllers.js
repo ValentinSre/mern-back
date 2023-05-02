@@ -47,27 +47,48 @@ const getCollectionByUserId = async (req, res, next) => {
 
   let collectionToReturn = [];
   if (displayMode === "bySeries") {
-    const seriesMap = new Map();
-
-    for (const { serie, version, titre, tome } of collectionWithBookId) {
-      const seriesName = serie ? serie : titre;
-      const seriesVersion = version ? " (v" + version + ")" : "";
-      const seriesFullName = seriesName + seriesVersion;
-
-      const series = seriesMap.get(seriesFullName) || {
-        serie: seriesFullName,
-        books: [],
-      };
-      series.books.push({ serie, version, titre, tome });
-
-      seriesMap.set(seriesFullName, series);
+    for (const coll of collectionWithBookId) {
+      const { serie, version, titre } = coll;
+      const serieToUse = serie ? serie : titre;
+      const versionToUse = version ? " (v" + version + ")" : "";
+      const serieToUseWithVersion = serieToUse + versionToUse;
+      const serieIndex = collectionToReturn.findIndex(
+        (serie) => serie.serie === serieToUseWithVersion
+      );
+      if (serieIndex === -1) {
+        collectionToReturn.push({
+          serie: serieToUseWithVersion,
+          books: [coll],
+        });
+      } else {
+        collectionToReturn[serieIndex].books.push(coll);
+      }
     }
 
-    const collectionToReturn = [...seriesMap.values()];
     collectionToReturn.forEach((serie) => {
       serie.books.sort((a, b) =>
         a.tome && b.tome ? a.tome - b.tome : a.tome ? -1 : b.tome ? 1 : 0
       );
+
+      // Tri des livres avec quicksort
+      const quickSort = (arr) => {
+        if (arr.length <= 1) return arr;
+        const pivot = arr[0].tome;
+        const left = [];
+        const right = [];
+        for (let i = 1; i < arr.length; i++) {
+          if (!arr[i].tome) {
+            left.push(arr[i]);
+          } else if (arr[i].tome < pivot) {
+            left.push(arr[i]);
+          } else {
+            right.push(arr[i]);
+          }
+        }
+        return [...quickSort(left), arr[0], ...quickSort(right)];
+      };
+
+      serie.books = quickSort(serie.books);
     });
 
     collectionToReturn.sort((a, b) => {
