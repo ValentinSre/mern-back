@@ -406,6 +406,8 @@ const deleteWishlist = async (req, res, next) => {
   const userId = req.params.uid;
   const bookId = req.params.bid;
 
+  console.log(userId, bookId);
+
   let wishlist;
   try {
     wishlist = await Collection.findOne({
@@ -415,11 +417,13 @@ const deleteWishlist = async (req, res, next) => {
     });
   } catch (err) {
     const error = new HttpError(
-      "La suppression a échoué, veuillez réessayer.",
+      "Une erreur a eu lieu, veuillez réessayer.",
       500
     );
     return next(error);
   }
+
+  console.log(wishlist);
 
   if (!wishlist) {
     const error = new HttpError(
@@ -436,7 +440,7 @@ const deleteWishlist = async (req, res, next) => {
       await wishlist.save();
     } catch (err) {
       const error = new HttpError(
-        "La suppression a échoué, veuillez réessayer.",
+        "La mise à jour de la collection a échoué, veuillez réessayer.",
         500
       );
       return next(error);
