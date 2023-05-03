@@ -9,6 +9,7 @@ const router = express.Router();
 router.get("/", bookControllers.getBooks);
 router.get("/all-information", bookControllers.getAllBooksInformation);
 router.get("/future-releases", bookControllers.getFutureReleases);
+router.get("/search", bookControllers.searchBooks);
 router.get("/:bid", bookControllers.getBookById);
 
 // router.get("/user/:uid", placesControllers.getPlacesByUserId);

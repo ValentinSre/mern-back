@@ -323,6 +323,7 @@ const updateBook = async (req, res, next) => {
   }
   res.status(200).json({ book: book.toObject({ getters: true }) });
 };
+
 const manageArtists = async (auteurs, dessinateurs) => {
   // Vérifier si chaque auteur existe ou non
   const auteursFromDB = [];
@@ -397,6 +398,67 @@ const manageArtists = async (auteurs, dessinateurs) => {
     dessinateursFromDB.push(dessinateur);
   }
   return { auteursFromDB, dessinateursFromDB };
+};
+
+const searchBooks = async (req, res, next) => {
+  const search = req.query.q;
+
+  // fetch books with search in title
+  let booksByTitle;
+  try {
+    booksByTitle = await Book.find({
+      $or: [
+        { titre: { $regex: search, $options: "i" } },
+        { serie: { $regex: search, $options: "i" } },
+      ],
+    }).select(
+      "-auteurs -editeur -date_parution -prix -poids -planches -image -format -genre -dessinateurs -type"
+    );
+  } catch (err) {
+    const error = new HttpError("Failed to find books", 500);
+    return next(error);
+  }
+
+  // fetch books with search in serie
+  let booksBySerie;
+
+  try {
+    booksBySerie = await Book.aggregate([
+      {
+        $match: {
+          $or: [{ serie: { $regex: search, $options: "i" } }],
+        },
+      },
+      {
+        $group: {
+          _id: { serie: "$serie", version: "$version" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          serie: "$_id.serie",
+          version: "$_id.version",
+        },
+      },
+    ]).exec();
+  } catch (err) {
+    const error = new HttpError("Failed to find series", 500);
+    return next(error);
+  }
+
+  // fetch artists with search in nom
+  let artistsByName;
+  try {
+    artistsByName = await Artist.find({
+      nom: { $regex: search, $options: "i" },
+    }).select("-books -auteur -dessinateur");
+  } catch (err) {
+    const error = new HttpError("Failed to find artists", 500);
+    return next(error);
+  }
+
+  res.status(200).json({ booksByTitle, booksBySerie, artistsByName });
 };
 
 const deleteBook = async (req, res, next) => {
@@ -474,3 +536,4 @@ exports.getBookById = getBookById;
 exports.updateBook = updateBook;
 exports.deleteBook = deleteBook;
 exports.getAllBooksInformation = getAllBooksInformation;
+exports.searchBooks = searchBooks;
