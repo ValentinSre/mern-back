@@ -265,16 +265,29 @@ const updateBook = async (req, res, next) => {
     );
     return next(error);
   }
-
   const bookId = req.params.bid;
-
+  const {
+    serie,
+    titre,
+    auteurs,
+    editeur,
+    date_parution,
+    tome,
+    prix,
+    image,
+    format,
+    genre,
+    dessinateurs,
+    type,
+    version,
+    poids,
+    planches,
+  } = req.body;
   const { auteursFromDB, dessinateursFromDB } = await manageArtists(
-    req.body.auteurs,
-    req.body.dessinateurs
+    auteurs,
+    dessinateurs
   );
-
   let book;
-
   try {
     book = await Book.findById(bookId);
   } catch (err) {
@@ -284,9 +297,21 @@ const updateBook = async (req, res, next) => {
     );
     return next(error);
   }
-
-  book = { ...book, ...req.body, auteursFromDB, dessinateursFromDB };
-
+  book.serie = serie;
+  book.titre = titre;
+  book.auteurs = auteursFromDB;
+  book.editeur = editeur;
+  book.date_parution = date_parution;
+  book.tome = tome;
+  book.prix = prix;
+  book.image = image;
+  book.format = format;
+  book.genre = genre;
+  book.dessinateurs = dessinateursFromDB;
+  book.type = type;
+  book.version = version;
+  book.poids = poids;
+  book.planches = planches;
   try {
     await book.save();
   } catch (err) {
@@ -296,72 +321,81 @@ const updateBook = async (req, res, next) => {
     );
     return next(error);
   }
-
   res.status(200).json({ book: book.toObject({ getters: true }) });
 };
-
-const createArtist = async (nom, auteur, dessinateur) => {
-  const newArtist = new Artist({
-    nom,
-    books: [],
-    auteur,
-    dessinateur,
-  });
-
-  try {
-    await newArtist.save();
-  } catch (err) {
-    console.log(err);
-    const error = new HttpError(
-      "La création de l'artiste a échoué, veuillez réessayer.",
-      500
-    );
-    throw error;
-  }
-
-  return newArtist;
-};
-
 const manageArtists = async (auteurs, dessinateurs) => {
-  const artistNames = [...auteurs, ...dessinateurs];
-  const artistsFromDB = {};
-
-  try {
-    const foundArtists = await Artist.find({ nom: { $in: artistNames } });
-    for (const artist of foundArtists) {
-      artistsFromDB[artist.nom] = artist;
-    }
-  } catch (err) {
-    console.log(err);
-    const error = new HttpError(
-      "La recherche des artistes a échoué, veuillez réessayer.",
-      500
-    );
-    throw error;
-  }
-
+  // Vérifier si chaque auteur existe ou non
   const auteursFromDB = [];
   for (const auteurName of auteurs) {
-    if (artistsFromDB[auteurName]) {
-      auteursFromDB.push(artistsFromDB[auteurName]);
-    } else {
-      const newArtist = await createArtist(auteurName, true, false);
-      artistsFromDB[auteurName] = newArtist;
-      auteursFromDB.push(newArtist);
+    let auteur;
+    try {
+      auteur = await Artist.findOne({ nom: auteurName });
+    } catch (err) {
+      console.log(err);
+      const error = new HttpError(
+        "La recherche de l'artiste a échoué, veuillez réessayer.",
+        500
+      );
+      return next(error);
     }
+    if (!auteur) {
+      // Si l'artiste n'existe pas, on le crée
+      const newArtist = new Artist({
+        nom: auteurName,
+        books: [],
+        auteur: true,
+        dessinateur: false,
+      });
+      try {
+        await newArtist.save();
+      } catch (err) {
+        console.log(err);
+        const error = new HttpError(
+          "La création de l'artiste a échoué, veuillez réessayer.",
+          500
+        );
+        return next(error);
+      }
+      auteur = newArtist;
+    }
+    auteursFromDB.push(auteur);
   }
-
+  // Vérifier si chaque dessinateur existe ou non
   const dessinateursFromDB = [];
   for (const dessinateurName of dessinateurs) {
-    if (artistsFromDB[dessinateurName]) {
-      dessinateursFromDB.push(artistsFromDB[dessinateurName]);
-    } else {
-      const newArtist = await createArtist(dessinateurName, false, true);
-      artistsFromDB[dessinateurName] = newArtist;
-      dessinateursFromDB.push(newArtist);
+    let dessinateur;
+    try {
+      dessinateur = await Artist.findOne({ nom: dessinateurName });
+    } catch (err) {
+      console.log(err);
+      const error = new HttpError(
+        "La recherche de l'artiste a échoué, veuillez réessayer.",
+        500
+      );
+      return next(error);
     }
+    if (!dessinateur) {
+      // Si l'artiste n'existe pas, on le crée
+      const newArtist = new Artist({
+        nom: dessinateurName,
+        books: [],
+        auteur: false,
+        dessinateur: true,
+      });
+      try {
+        await newArtist.save();
+      } catch (err) {
+        console.log(err);
+        const error = new HttpError(
+          "La création de l'artiste a échoué, veuillez réessayer.",
+          500
+        );
+        return next(error);
+      }
+      dessinateur = newArtist;
+    }
+    dessinateursFromDB.push(dessinateur);
   }
-
   return { auteursFromDB, dessinateursFromDB };
 };
 
