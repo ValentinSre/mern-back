@@ -6,17 +6,6 @@ const mongoose = require("mongoose");
 
 const { validationResult } = require("express-validator");
 
-const HTTP_STATUS = {
-  SUCCESS: 201,
-  ERROR: 500,
-  INVALID_DATA: 422,
-};
-
-const ERROR_MESSAGES = {
-  INVALID_DATA: "Informations invalides, please check your data.",
-  CREATE_FAILED: "Creating book failed, please try again.",
-};
-
 const getBooks = async (req, res, next) => {
   const { user } = req.query;
 
@@ -203,12 +192,11 @@ const createBook = async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     const error = new HttpError(
-      ERROR_MESSAGES.INVALID_DATA,
-      HTTP_STATUS.INVALID_DATA
+      "Informations invalides, please check your data.",
+      422
     );
-    return next(error);
+    next(error);
   }
-
   const {
     titre,
     serie,
@@ -226,7 +214,6 @@ const createBook = async (req, res, next) => {
     poids,
     planches,
   } = req.body;
-
   const bookModel = {
     titre,
     editeur,
@@ -234,7 +221,6 @@ const createBook = async (req, res, next) => {
     image,
     type: type || "Comics",
   };
-
   if (serie) bookModel.serie = serie;
   if (tome) bookModel.tome = tome;
   if (date_parution) bookModel.date_parution = date_parution;
@@ -243,45 +229,31 @@ const createBook = async (req, res, next) => {
   if (version) bookModel.version = version;
   if (planches) bookModel.planches = planches;
   if (poids) bookModel.poids = poids;
-
   const { auteursFromDB, dessinateursFromDB } = await manageArtists(
     auteurs,
     dessinateurs
   );
-
   bookModel.auteurs = auteursFromDB;
   bookModel.dessinateurs = dessinateursFromDB;
-
   const createdBook = new Book(bookModel);
-
   try {
     const sess = await mongoose.startSession();
     sess.startTransaction();
     await createdBook.save({ session: sess });
-
-    const authorsPromises = auteursFromDB.map((auteur) => {
+    for (const auteur of auteursFromDB) {
       auteur.books.push(createdBook);
-      return auteur.save({ session: sess });
-    });
-
-    const dessinateursPromises = dessinateursFromDB.map((dessinateur) => {
+      await auteur.save({ session: sess });
+    }
+    for (const dessinateur of dessinateursFromDB) {
       dessinateur.books.push(createdBook);
-      return dessinateur.save({ session: sess });
-    });
-
-    await Promise.all([...authorsPromises, ...dessinateursPromises]);
-
+      await dessinateur.save({ session: sess });
+    }
     await sess.commitTransaction();
   } catch (err) {
     console.log(err);
-    const error = new HttpError(
-      ERROR_MESSAGES.CREATE_FAILED,
-      HTTP_STATUS.ERROR
-    );
-    return next(error);
+    const error = new HttpError("Creating book failed, please try again.", 500);
   }
-
-  res.status(HTTP_STATUS.SUCCESS).json({ bookId: createdBook.id });
+  res.status(201).json({ bookId: createdBook.id });
 };
 
 const updateBook = async (req, res, next) => {
