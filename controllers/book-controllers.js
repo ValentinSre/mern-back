@@ -6,17 +6,6 @@ const mongoose = require("mongoose");
 
 const { validationResult } = require("express-validator");
 
-const HTTP_STATUS = {
-  SUCCESS: 201,
-  ERROR: 500,
-  INVALID_DATA: 422,
-};
-
-const ERROR_MESSAGES = {
-  INVALID_DATA: "Informations invalides, please check your data.",
-  CREATE_FAILED: "Creating book failed, please try again.",
-};
-
 const getBooks = async (req, res, next) => {
   const { user } = req.query;
 
@@ -203,12 +192,11 @@ const createBook = async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     const error = new HttpError(
-      ERROR_MESSAGES.INVALID_DATA,
-      HTTP_STATUS.INVALID_DATA
+      "Informations invalides, please check your data.",
+      422
     );
-    return next(error);
+    next(error);
   }
-
   const {
     titre,
     serie,
@@ -226,7 +214,6 @@ const createBook = async (req, res, next) => {
     poids,
     planches,
   } = req.body;
-
   const bookModel = {
     titre,
     editeur,
@@ -234,7 +221,6 @@ const createBook = async (req, res, next) => {
     image,
     type: type || "Comics",
   };
-
   if (serie) bookModel.serie = serie;
   if (tome) bookModel.tome = tome;
   if (date_parution) bookModel.date_parution = date_parution;
@@ -243,45 +229,31 @@ const createBook = async (req, res, next) => {
   if (version) bookModel.version = version;
   if (planches) bookModel.planches = planches;
   if (poids) bookModel.poids = poids;
-
   const { auteursFromDB, dessinateursFromDB } = await manageArtists(
     auteurs,
     dessinateurs
   );
-
   bookModel.auteurs = auteursFromDB;
   bookModel.dessinateurs = dessinateursFromDB;
-
   const createdBook = new Book(bookModel);
-
   try {
     const sess = await mongoose.startSession();
     sess.startTransaction();
     await createdBook.save({ session: sess });
-
-    const authorsPromises = auteursFromDB.map((auteur) => {
+    for (const auteur of auteursFromDB) {
       auteur.books.push(createdBook);
-      return auteur.save({ session: sess });
-    });
-
-    const dessinateursPromises = dessinateursFromDB.map((dessinateur) => {
+      await auteur.save({ session: sess });
+    }
+    for (const dessinateur of dessinateursFromDB) {
       dessinateur.books.push(createdBook);
-      return dessinateur.save({ session: sess });
-    });
-
-    await Promise.all([...authorsPromises, ...dessinateursPromises]);
-
+      await dessinateur.save({ session: sess });
+    }
     await sess.commitTransaction();
   } catch (err) {
     console.log(err);
-    const error = new HttpError(
-      ERROR_MESSAGES.CREATE_FAILED,
-      HTTP_STATUS.ERROR
-    );
-    return next(error);
+    const error = new HttpError("Creating book failed, please try again.", 500);
   }
-
-  res.status(HTTP_STATUS.SUCCESS).json({ bookId: createdBook.id });
+  res.status(201).json({ bookId: createdBook.id });
 };
 
 const updateBook = async (req, res, next) => {
@@ -293,16 +265,29 @@ const updateBook = async (req, res, next) => {
     );
     return next(error);
   }
-
   const bookId = req.params.bid;
-
+  const {
+    serie,
+    titre,
+    auteurs,
+    editeur,
+    date_parution,
+    tome,
+    prix,
+    image,
+    format,
+    genre,
+    dessinateurs,
+    type,
+    version,
+    poids,
+    planches,
+  } = req.body;
   const { auteursFromDB, dessinateursFromDB } = await manageArtists(
-    req.body.auteurs,
-    req.body.dessinateurs
+    auteurs,
+    dessinateurs
   );
-
   let book;
-
   try {
     book = await Book.findById(bookId);
   } catch (err) {
@@ -312,9 +297,21 @@ const updateBook = async (req, res, next) => {
     );
     return next(error);
   }
-
-  book = { ...book, ...req.body, auteursFromDB, dessinateursFromDB };
-
+  book.serie = serie;
+  book.titre = titre;
+  book.auteurs = auteursFromDB;
+  book.editeur = editeur;
+  book.date_parution = date_parution;
+  book.tome = tome;
+  book.prix = prix;
+  book.image = image;
+  book.format = format;
+  book.genre = genre;
+  book.dessinateurs = dessinateursFromDB;
+  book.type = type;
+  book.version = version;
+  book.poids = poids;
+  book.planches = planches;
   try {
     await book.save();
   } catch (err) {
@@ -324,73 +321,144 @@ const updateBook = async (req, res, next) => {
     );
     return next(error);
   }
-
   res.status(200).json({ book: book.toObject({ getters: true }) });
 };
 
-const createArtist = async (nom, auteur, dessinateur) => {
-  const newArtist = new Artist({
-    nom,
-    books: [],
-    auteur,
-    dessinateur,
-  });
-
-  try {
-    await newArtist.save();
-  } catch (err) {
-    console.log(err);
-    const error = new HttpError(
-      "La création de l'artiste a échoué, veuillez réessayer.",
-      500
-    );
-    throw error;
-  }
-
-  return newArtist;
-};
-
 const manageArtists = async (auteurs, dessinateurs) => {
-  const artistNames = [...auteurs, ...dessinateurs];
-  const artistsFromDB = {};
-
-  try {
-    const foundArtists = await Artist.find({ nom: { $in: artistNames } });
-    for (const artist of foundArtists) {
-      artistsFromDB[artist.nom] = artist;
-    }
-  } catch (err) {
-    console.log(err);
-    const error = new HttpError(
-      "La recherche des artistes a échoué, veuillez réessayer.",
-      500
-    );
-    throw error;
-  }
-
+  // Vérifier si chaque auteur existe ou non
   const auteursFromDB = [];
   for (const auteurName of auteurs) {
-    if (artistsFromDB[auteurName]) {
-      auteursFromDB.push(artistsFromDB[auteurName]);
-    } else {
-      const newArtist = await createArtist(auteurName, true, false);
-      artistsFromDB[auteurName] = newArtist;
-      auteursFromDB.push(newArtist);
+    let auteur;
+    try {
+      auteur = await Artist.findOne({ nom: auteurName });
+    } catch (err) {
+      console.log(err);
+      const error = new HttpError(
+        "La recherche de l'artiste a échoué, veuillez réessayer.",
+        500
+      );
+      return next(error);
     }
+    if (!auteur) {
+      // Si l'artiste n'existe pas, on le crée
+      const newArtist = new Artist({
+        nom: auteurName,
+        books: [],
+        auteur: true,
+        dessinateur: false,
+      });
+      try {
+        await newArtist.save();
+      } catch (err) {
+        console.log(err);
+        const error = new HttpError(
+          "La création de l'artiste a échoué, veuillez réessayer.",
+          500
+        );
+        return next(error);
+      }
+      auteur = newArtist;
+    }
+    auteursFromDB.push(auteur);
   }
-
+  // Vérifier si chaque dessinateur existe ou non
   const dessinateursFromDB = [];
   for (const dessinateurName of dessinateurs) {
-    if (artistsFromDB[dessinateurName]) {
-      dessinateursFromDB.push(artistsFromDB[dessinateurName]);
-    } else {
-      const newArtist = await createArtist(dessinateurName, false, true);
-      artistsFromDB[dessinateurName] = newArtist;
-      dessinateursFromDB.push(newArtist);
+    let dessinateur;
+    try {
+      dessinateur = await Artist.findOne({ nom: dessinateurName });
+    } catch (err) {
+      console.log(err);
+      const error = new HttpError(
+        "La recherche de l'artiste a échoué, veuillez réessayer.",
+        500
+      );
+      return next(error);
     }
+    if (!dessinateur) {
+      // Si l'artiste n'existe pas, on le crée
+      const newArtist = new Artist({
+        nom: dessinateurName,
+        books: [],
+        auteur: false,
+        dessinateur: true,
+      });
+      try {
+        await newArtist.save();
+      } catch (err) {
+        console.log(err);
+        const error = new HttpError(
+          "La création de l'artiste a échoué, veuillez réessayer.",
+          500
+        );
+        return next(error);
+      }
+      dessinateur = newArtist;
+    }
+    dessinateursFromDB.push(dessinateur);
+  }
+  return { auteursFromDB, dessinateursFromDB };
+};
+
+const searchBooks = async (req, res, next) => {
+  const search = req.query.q;
+
+  // fetch books with search in title
+  let booksByTitle;
+  try {
+    booksByTitle = await Book.find({
+      $or: [
+        { titre: { $regex: search, $options: "i" } },
+        { serie: { $regex: search, $options: "i" } },
+      ],
+    }).select(
+      "-auteurs -editeur -date_parution -prix -poids -planches -image -format -genre -dessinateurs -type"
+    );
+  } catch (err) {
+    const error = new HttpError("Failed to find books", 500);
+    return next(error);
   }
 
-  return { auteursFromDB, dessinateursFromDB };
+  // fetch books with search in serie
+  let booksBySerie;
+
+  try {
+    booksBySerie = await Book.aggregate([
+      {
+        $match: {
+          $or: [{ serie: { $regex: search, $options: "i" } }],
+        },
+      },
+      {
+        $group: {
+          _id: { serie: "$serie", version: "$version" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          serie: "$_id.serie",
+          version: "$_id.version",
+        },
+      },
+    ]).exec();
+  } catch (err) {
+    const error = new HttpError("Failed to find series", 500);
+    return next(error);
+  }
+
+  // fetch artists with search in nom
+  let artistsByName;
+  try {
+    artistsByName = await Artist.find({
+      nom: { $regex: search, $options: "i" },
+    }).select("-books -auteur -dessinateur");
+  } catch (err) {
+    const error = new HttpError("Failed to find artists", 500);
+    return next(error);
+  }
+
+  res.status(200).json({ booksByTitle, booksBySerie, artistsByName });
 };
 
 const deleteBook = async (req, res, next) => {
@@ -468,3 +536,4 @@ exports.getBookById = getBookById;
 exports.updateBook = updateBook;
 exports.deleteBook = deleteBook;
 exports.getAllBooksInformation = getAllBooksInformation;
+exports.searchBooks = searchBooks;
