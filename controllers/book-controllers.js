@@ -121,6 +121,30 @@ const getBookById = async (req, res, next) => {
     }
   }
 
+  // Rechercher les livres de la même série (regarder aussi la version)
+  if (bookObj.serie) {
+    let booksSerie;
+    try {
+      booksSerie = await Book.find({
+        serie: bookObj.serie,
+        version: bookObj.version,
+      }).select("image titre tome serie version");
+    } catch (err) {
+      const error = new HttpError(
+        "La collecte de livres de la même série a échoué, veuillez réessayer...",
+        500
+      );
+      return next(error);
+    }
+
+    // Supprimer le livre actuel de la liste
+    booksSerie = booksSerie.filter(
+      (book) => book._id.toString() !== bookId.toString()
+    );
+
+    bookObj.booksSerie = booksSerie;
+  }
+
   res.status(200).json({ book: bookObj });
 };
 
