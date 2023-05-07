@@ -154,6 +154,7 @@ const login = async (req, res, next) => {
     userId: existingUser.id,
     email: existingUser.email,
     isAdmin: existingUser.isAdmin,
+    name: existingUser.name,
     token: token,
   });
 };
