@@ -190,23 +190,23 @@ const getBooksLists = async (req, res, next) => {
 
   try {
     valiantBooks = await Book.find({ format: "Valiant" }).select(
-      "titre serie tome version image"
+      "titre serie tome version image prix"
     );
     hiComicsBooks = await Book.find({ editeur: "HiComics" }).select(
-      "titre serie tome version image"
+      "titre serie tome version image prix"
     );
     asterixBooks = await Book.find({ serie: "Astérix" }).select(
-      "titre serie tome version image"
+      "titre serie tome version image prix"
     );
     qcqBooks = await Book.find({ editeur: "404 Comics" }).select(
-      "titre serie tome version image"
+      "titre serie tome version image prix"
     );
     pokemonBooks = await Book.find({
       $or: [{ serie: /Pokémon/ }, { titre: /Pokémon/ }],
-    }).select("titre serie tome version image");
+    }).select("titre serie tome version image prix");
     starWarsBooks = await Book.find({
       $or: [{ serie: /Star Wars/ }, { titre: /Star Wars/ }],
-    }).select("titre serie tome version image");
+    }).select("titre serie tome version image prix");
   } catch (err) {
     const error = new HttpError(
       "La collecte de livres a échoué, veuillez réessayer...",
@@ -220,7 +220,7 @@ const getBooksLists = async (req, res, next) => {
   if (user !== "undefined") {
     try {
       collection = await Collection.find({ owner: user }).select(
-        "book souhaite"
+        "book possede"
       );
     } catch (err) {
       const error = new HttpError(
@@ -240,7 +240,7 @@ const getBooksLists = async (req, res, next) => {
           (col) => col.book.toString() === book._id.toString()
         );
         if (bookCollection) {
-          bookObj.souhaite = bookCollection.souhaite;
+          bookObj.possede = bookCollection.possede;
         }
       }
       return bookObj;
