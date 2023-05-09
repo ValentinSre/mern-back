@@ -154,6 +154,90 @@ const getFutureReleases = async (req, res, next) => {
   res.json({ books: books.map((book) => book.toObject({ getters: true })) });
 };
 
+const getBooksLists = async (req, res, next) => {
+  const { user } = req.query;
+
+  let valiantBooks; // Valiant
+  let hiComicsBooks; // HiComics
+  let asterixBooks; // Asterix
+  let qcqBooks; // 404 Editions
+  let pokemonBooks; // Pokémon
+
+  try {
+    valiantBooks = await Book.find({ format: "Valiant" }).select(
+      "titre serie tome version image"
+    );
+    hiComicsBooks = await Book.find({ editeur: "HiComics" }).select(
+      "titre serie tome version image"
+    );
+    asterixBooks = await Book.find({ serie: "Astérix" }).select(
+      "titre serie tome version image"
+    );
+    qcqBooks = await Book.find({ editeur: "404 Comics" }).select(
+      "titre serie tome version image"
+    );
+    // pokémon books : serie ou titre contient "Pokémon"
+    pokemonBooks = await Book.find({
+      $or: [{ serie: /Pokémon/ }, { titre: /Pokémon/ }],
+    }).select("titre serie tome version image");
+  } catch (err) {
+    const error = new HttpError(
+      "La collecte de livres a échoué, veuillez réessayer...",
+      500
+    );
+    return next(error);
+  }
+
+  let collection;
+
+  if (user !== "undefined") {
+    try {
+      collection = await Collection.find({ owner: user }).select(
+        "book souhaite"
+      );
+    } catch (err) {
+      const error = new HttpError(
+        "La comparaison de la bibliothèque avec votre collection a échoué, veuillez réessayer...",
+        500
+      );
+      return next(error);
+    }
+  }
+
+  // Fusionner les listes de books et de collections
+  function mergeBooksWithCollection(books, collection) {
+    return books.map((book) => {
+      const bookObj = book.toObject({ getters: true });
+      if (collection) {
+        const bookCollection = collection.find(
+          (col) => col.book.toString() === book._id.toString()
+        );
+        if (bookCollection) {
+          bookObj.souhaite = bookCollection.souhaite;
+        }
+      }
+      return bookObj;
+    });
+  }
+
+  const mergedValiantBooks = mergeBooksWithCollection(valiantBooks, collection);
+  const mergedHiComicsBooks = mergeBooksWithCollection(
+    hiComicsBooks,
+    collection
+  );
+  const mergedAsterixBooks = mergeBooksWithCollection(asterixBooks, collection);
+  const mergedQcqBooks = mergeBooksWithCollection(qcqBooks, collection);
+  const mergedPokemonBooks = mergeBooksWithCollection(pokemonBooks, collection);
+
+  res.json({
+    valiantBooks: mergedValiantBooks,
+    hiComicsBooks: mergedHiComicsBooks,
+    asterixBooks: mergedAsterixBooks,
+    qcqBooks: mergedQcqBooks,
+    pokemonBooks: mergedPokemonBooks,
+  });
+};
+
 const getAllBooksInformation = async (req, res, next) => {
   try {
     const editeurs = await Book.distinct("editeur", {
@@ -537,3 +621,4 @@ exports.updateBook = updateBook;
 exports.deleteBook = deleteBook;
 exports.getAllBooksInformation = getAllBooksInformation;
 exports.searchBooks = searchBooks;
+exports.getBooksLists = getBooksLists;
