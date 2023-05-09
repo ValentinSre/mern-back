@@ -186,6 +186,7 @@ const getBooksLists = async (req, res, next) => {
   let asterixBooks; // Asterix
   let qcqBooks; // 404 Editions
   let pokemonBooks; // Pokémon
+  let starWarsBooks; // Star Wars
 
   try {
     valiantBooks = await Book.find({ format: "Valiant" }).select(
@@ -200,9 +201,11 @@ const getBooksLists = async (req, res, next) => {
     qcqBooks = await Book.find({ editeur: "404 Comics" }).select(
       "titre serie tome version image"
     );
-    // pokémon books : serie ou titre contient "Pokémon"
     pokemonBooks = await Book.find({
       $or: [{ serie: /Pokémon/ }, { titre: /Pokémon/ }],
+    }).select("titre serie tome version image");
+    starWarsBooks = await Book.find({
+      $or: [{ serie: /Star Wars/ }, { titre: /Star Wars/ }],
     }).select("titre serie tome version image");
   } catch (err) {
     const error = new HttpError(
@@ -252,6 +255,10 @@ const getBooksLists = async (req, res, next) => {
   const mergedAsterixBooks = mergeBooksWithCollection(asterixBooks, collection);
   const mergedQcqBooks = mergeBooksWithCollection(qcqBooks, collection);
   const mergedPokemonBooks = mergeBooksWithCollection(pokemonBooks, collection);
+  const mergedStarWarsBooks = mergeBooksWithCollection(
+    starWarsBooks,
+    collection
+  );
 
   res.json({
     valiantBooks: mergedValiantBooks,
@@ -259,6 +266,7 @@ const getBooksLists = async (req, res, next) => {
     asterixBooks: mergedAsterixBooks,
     qcqBooks: mergedQcqBooks,
     pokemonBooks: mergedPokemonBooks,
+    starWarsBooks: mergedStarWarsBooks,
   });
 };
 
