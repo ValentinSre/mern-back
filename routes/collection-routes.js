@@ -6,6 +6,7 @@ const checkAuth = require("../middleware/check-auth");
 const router = express.Router();
 
 router.get("/wishlist/:uid", collectionControllers.getWishlistByUserId);
+router.get("/readlist/:uid", collectionControllers.getReadlistByUserId);
 router.get(
   "/my-releases/:uid",
   collectionControllers.getFutureWishlistByUserId

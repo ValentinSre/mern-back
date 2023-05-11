@@ -271,6 +271,74 @@ const getCollectionStatsByUserId = async (req, res, next) => {
   });
 };
 
+const getReadlistByUserId = async (req, res, next) => {
+  const userId = req.params.uid;
+
+  let collection;
+  try {
+    collection = await Collection.find({ owner: userId, lu: true })
+      .select("book read_dates")
+      .populate({
+        path: "book",
+        select: "_id serie titre tome image version",
+      });
+  } catch (err) {
+    const error = new HttpError(
+      "Fetching readlist failed, please try again later",
+      500
+    );
+    return next(error);
+  }
+
+  if (!collection || collection.length === 0) {
+    return next(
+      new HttpError("La readlist n'existe pas ou semble vide...", 404)
+    );
+  }
+
+  const allReadBooks = collection.map((coll) => {
+    const { book, read_dates } = coll;
+    const { _id, serie, titre, tome, image, version } = book;
+    return read_dates.map((date) => {
+      return {
+        id_book: _id,
+        serie,
+        titre,
+        tome,
+        image,
+        version,
+        date,
+      };
+    });
+  });
+
+  const readBooks = allReadBooks.flat();
+
+  const readBooksByDate = readBooks.reduce((acc, book) => {
+    const { date } = book;
+    if (!acc[date]) {
+      acc[date] = [];
+    }
+    acc[date].push(book);
+    return acc;
+  }, {});
+
+  const readBooksByDateSorted = Object.keys(readBooksByDate)
+    .sort((a, b) => {
+      const dateA = new Date(a);
+      const dateB = new Date(b);
+      return dateB - dateA;
+    })
+    .reduce((acc, key) => {
+      acc[key] = readBooksByDate[key];
+      return acc;
+    }, {});
+
+  res.json({
+    readlist: readBooksByDateSorted,
+  });
+};
+
 const addBookToCollection = async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -463,3 +531,4 @@ exports.getWishlistByUserId = getWishlistByUserId;
 exports.getCollectionStatsByUserId = getCollectionStatsByUserId;
 exports.getFutureWishlistByUserId = getFutureWishlistByUserId;
 exports.deleteWishlist = deleteWishlist;
+exports.getReadlistByUserId = getReadlistByUserId;
