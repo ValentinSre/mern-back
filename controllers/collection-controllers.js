@@ -334,8 +334,64 @@ const getReadlistByUserId = async (req, res, next) => {
       return acc;
     }, {});
 
+  // non read books
+  let unreadCollection;
+  try {
+    unreadCollection = await Collection.find({ owner: userId, lu: false })
+
+      .select("book")
+      .populate({
+        path: "book",
+        select: "_id serie titre tome image version",
+      });
+  } catch (err) {
+    const error = new HttpError(
+      "Fetching readlist failed, please try again later",
+      500
+    );
+    return next(error);
+  }
+
+  if (!unreadCollection || unreadCollection.length === 0) {
+    return next(
+      new HttpError(
+        "La liste de livres non lus n'existe pas ou semble vide...",
+        404
+      )
+    );
+  }
+
+  const allUnreadBooks = unreadCollection.map((coll) => {
+    const { book } = coll;
+    const { _id, serie, titre, tome, image, version } = book;
+    return {
+      id_book: _id,
+      serie,
+      titre,
+      tome,
+      image,
+      version,
+    };
+  });
+
+  allUnreadBooks.sort((a, b) => {
+    const getStringForSorting = (book) => {
+      const { serie, tome, version, titre } = book;
+      const serieToUse = serie || titre;
+      const versionToUse = version ? ` (v${version})` : "";
+      const tomeToUse = tome ? ` - tome ${tome}` : "";
+      return `${serieToUse}${versionToUse}${tomeToUse}${titre}`;
+    };
+
+    const stringA = getStringForSorting(a);
+    const stringB = getStringForSorting(b);
+
+    return stringA.localeCompare(stringB);
+  });
+
   res.json({
     readlist: readBooksByDateSorted,
+    unreadlist: allUnreadBooks,
   });
 };
 
