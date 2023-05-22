@@ -337,8 +337,10 @@ const getReadlistByUserId = async (req, res, next) => {
   // non read books
   let unreadCollection;
   try {
-    unreadCollection = await Collection.find({ owner: userId, lu: false })
-
+    unreadCollection = await Collection.find({
+      owner: userId,
+      lu: { $ne: true },
+    })
       .select("book")
       .populate({
         path: "book",
