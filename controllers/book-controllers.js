@@ -528,7 +528,7 @@ const searchBooks = async (req, res, next) => {
         { serie: { $regex: search, $options: "i" } },
       ],
     }).select(
-      "-auteurs -editeur -date_parution -prix -poids -planches -image -format -genre -dessinateurs -type"
+      "-auteurs -editeur -date_parution -prix -poids -planches -format -genre -dessinateurs -type"
     );
   } catch (err) {
     const error = new HttpError("Failed to find books", 500);
@@ -537,7 +537,7 @@ const searchBooks = async (req, res, next) => {
 
   // fetch books with search in serie
   let booksBySerie;
-
+  let seriesList = [];
   try {
     booksBySerie = await Book.aggregate([
       {
@@ -545,19 +545,55 @@ const searchBooks = async (req, res, next) => {
           $or: [{ serie: { $regex: search, $options: "i" } }],
         },
       },
-      {
-        $group: {
-          _id: { serie: "$serie", version: "$version" },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          serie: "$_id.serie",
-          version: "$_id.version",
-        },
-      },
     ]).exec();
+
+    for (const coll of booksBySerie) {
+      const { serie, version, titre } = coll;
+      const serieToUse = serie ? serie : titre;
+      const versionToUse = version ? " (v" + version + ")" : "";
+      const serieToUseWithVersion = serieToUse + versionToUse;
+      const serieIndex = collectionToReturn.findIndex(
+        (serie) => serie.serie === serieToUseWithVersion
+      );
+      if (serieIndex === -1) {
+        seriesList.push({
+          serie: serieToUseWithVersion,
+          books: [coll],
+        });
+      } else {
+        seriesList[serieIndex].books.push(coll);
+      }
+    }
+
+    seriesList.forEach((serie) => {
+      serie.books.sort((a, b) =>
+        a.tome && b.tome ? a.tome - b.tome : a.tome ? -1 : b.tome ? 1 : 0
+      );
+
+      // Tri des livres avec quicksort
+      const quickSort = (arr) => {
+        if (arr.length <= 1) return arr;
+        const pivot = arr[0].tome;
+        const left = [];
+        const right = [];
+        for (let i = 1; i < arr.length; i++) {
+          if (!arr[i].tome) {
+            left.push(arr[i]);
+          } else if (arr[i].tome < pivot) {
+            left.push(arr[i]);
+          } else {
+            right.push(arr[i]);
+          }
+        }
+        return [...quickSort(left), arr[0], ...quickSort(right)];
+      };
+
+      serie.books = quickSort(serie.books);
+    });
+
+    seriesList.sort((a, b) => {
+      return a.serie.localeCompare(b.serie);
+    });
   } catch (err) {
     const error = new HttpError("Failed to find series", 500);
     return next(error);
@@ -574,7 +610,9 @@ const searchBooks = async (req, res, next) => {
     return next(error);
   }
 
-  res.status(200).json({ booksByTitle, booksBySerie, artistsByName });
+  res
+    .status(200)
+    .json({ booksByTitle, booksBySerie: seriesList, artistsByName });
 };
 
 const deleteBook = async (req, res, next) => {
