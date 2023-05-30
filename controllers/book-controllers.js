@@ -550,7 +550,7 @@ const searchBooks = async (req, res, next) => {
       const serieToUse = serie ? serie : titre;
       const versionToUse = version ? " (v" + version + ")" : "";
       const serieToUseWithVersion = serieToUse + versionToUse;
-      const serieIndex = collectionToReturn.findIndex(
+      const serieIndex = seriesList.findIndex(
         (serie) => serie.serie === serieToUseWithVersion
       );
       if (serieIndex === -1) {
