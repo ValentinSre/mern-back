@@ -539,13 +539,11 @@ const searchBooks = async (req, res, next) => {
   let booksBySerie;
   let seriesList = [];
   try {
-    booksBySerie = await Book.aggregate([
-      {
-        $match: {
-          $or: [{ serie: { $regex: search, $options: "i" } }],
-        },
-      },
-    ]).exec();
+    booksBySerie = await Book.find({
+      $or: [{ serie: { $regex: search, $options: "i" } }],
+    }).select(
+      "-auteurs -editeur -date_parution -prix -poids -planches -format -genre -dessinateurs -type"
+    );
 
     for (const coll of booksBySerie) {
       const { serie, version, titre } = coll;
