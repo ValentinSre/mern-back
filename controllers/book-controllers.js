@@ -699,7 +699,7 @@ const getAllBooksFromArtist = async (req, res, next) => {
 
   const { books, ...artistData } = artist;
 
-  res.status(200).json({ books: artist.books, artist: artistData });
+  res.status(200).json({ books, artist: artistData });
 };
 
 exports.getBooks = getBooks;
