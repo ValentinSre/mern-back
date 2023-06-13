@@ -11,7 +11,7 @@ router.get("/all-information", bookControllers.getAllBooksInformation);
 router.get("/future-releases", bookControllers.getFutureReleases);
 router.get("/lists", bookControllers.getBooksLists);
 router.get("/search", bookControllers.searchBooks);
-router.get("/artist/:aid", bookControllers.getBooksByArtistId);
+router.get("/artist/:aid", bookControllers.getAllBooksFromArtist);
 router.get("/:bid", bookControllers.getBookById);
 
 // router.get("/user/:uid", placesControllers.getPlacesByUserId);
