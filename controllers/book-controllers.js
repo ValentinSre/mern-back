@@ -681,6 +681,25 @@ const removeBookFromArtistArrays = async (book, session) => {
   }
 };
 
+const getAllBooksFromArtist = async (req, res, next) => {
+  const artistId = req.params.aid;
+
+  let artist;
+  try {
+    artist = await Artist.findById(artistId).populate("books");
+  } catch (err) {
+    const error = new HttpError("Failed to find artist", 500);
+    return next(error);
+  }
+
+  if (!artist) {
+    const error = new HttpError("Failed to find artist with provided ID", 404);
+    return next(error);
+  }
+
+  res.status(200).json({ books: artist.books });
+};
+
 exports.getBooks = getBooks;
 exports.createBook = createBook;
 exports.getFutureReleases = getFutureReleases;
@@ -690,3 +709,4 @@ exports.deleteBook = deleteBook;
 exports.getAllBooksInformation = getAllBooksInformation;
 exports.searchBooks = searchBooks;
 exports.getBooksLists = getBooksLists;
+exports.getAllBooksFromArtist = getAllBooksFromArtist;
