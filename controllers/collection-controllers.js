@@ -15,7 +15,7 @@ const getCollectionByUserId = async (req, res, next) => {
 
   try {
     collection = await Collection.find({ owner: userId, possede: true })
-      .select("-souhaite -date_achat -read_dates -review -lien")
+      .select("-souhaite -read_dates -review -lien")
       .populate({
         path: "book",
         select:
