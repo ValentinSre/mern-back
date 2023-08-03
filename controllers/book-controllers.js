@@ -702,6 +702,55 @@ const getAllBooksFromArtist = async (req, res, next) => {
   res.status(200).json({ books, artist: artistData });
 };
 
+const getMenusData = async (req, res, next) => {
+  let comicsData;
+  let bdsData;
+  let mangasData;
+  let romansData;
+
+  // for each, collect the different genres, the most famous artists and two random books
+  try {
+    comicsData = await Book.find({ type: "Comics" }).select(
+      "genre auteurs dessinateurs"
+    );
+    bdsData = await Book.find({ type: "BD" }).select(
+      "genre auteurs dessinateurs"
+    );
+    mangasData = await Book.find({ type: "Mangas" }).select(
+      "genre auteurs dessinateurs"
+    );
+    romansData = await Book.find({ type: "Romans" }).select(
+      "genre auteurs dessinateurs"
+    );
+  } catch (err) {
+    const error = new HttpError("Failed to find books", 500);
+    return next(error);
+  }
+
+  const comicsRes = sortBooksMenu(comicsData);
+  const bdsRes = sortBooksMenu(bdsData);
+  const mangasRes = sortBooksMenu(mangasData);
+  const romansRes = sortBooksMenu(romansData);
+
+  res.status(200).json({ comicsRes, bdsRes, mangasRes, romansRes });
+};
+
+const sortBooksMenu = (books) => {
+  const res = { genres: [], artists: [], books: [] };
+
+  books.forEach((book) => {
+    res.genres.push(book.genre);
+    res.artists.push(...book.auteurs, ...book.dessinateurs);
+    res.books.push(book);
+  });
+
+  res.genres = [...new Set(res.genres)];
+  res.artists = [...new Set(res.artists)];
+  res.books = res.books.sort(() => Math.random() - 0.5).slice(0, 2);
+
+  return res;
+};
+
 exports.getBooks = getBooks;
 exports.createBook = createBook;
 exports.getFutureReleases = getFutureReleases;
@@ -712,3 +761,4 @@ exports.getAllBooksInformation = getAllBooksInformation;
 exports.searchBooks = searchBooks;
 exports.getBooksLists = getBooksLists;
 exports.getAllBooksFromArtist = getAllBooksFromArtist;
+exports.getMenusData = getMenusData;

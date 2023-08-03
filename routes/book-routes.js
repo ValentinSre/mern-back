@@ -11,10 +11,9 @@ router.get("/all-information", bookControllers.getAllBooksInformation);
 router.get("/future-releases", bookControllers.getFutureReleases);
 router.get("/lists", bookControllers.getBooksLists);
 router.get("/search", bookControllers.searchBooks);
+router.get("/menus-data", bookControllers.getMenusData);
 router.get("/artist/:aid", bookControllers.getAllBooksFromArtist);
 router.get("/:bid", bookControllers.getBookById);
-
-// router.get("/user/:uid", placesControllers.getPlacesByUserId);
 
 // Middleware pour protéger l'accès aux routes suivantes
 router.use(checkAuth);
@@ -25,8 +24,6 @@ router.post(
     check("titre").not().isEmpty(),
     check("editeur").not().isEmpty(),
     check("prix").not().isEmpty(),
-    // check("auteurs").not().isEmpty(),
-    // check("dessinateurs").not().isEmpty(),
   ],
   bookControllers.createBook
 );
