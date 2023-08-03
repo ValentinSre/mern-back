@@ -710,30 +710,18 @@ const getMenusData = async (req, res, next) => {
 
   // for each, collect the different genres, the most famous artists and two random books
   try {
-    comicsData = await Book.find({ type: "Comics" })
-      .select("genre auteurs dessinateurs")
-      .populate([
-        { path: "auteurs", model: "Artist" },
-        { path: "dessinateurs", model: "Artist" },
-      ]);
-    bdsData = await Book.find({ type: "BD" })
-      .select("genre auteurs dessinateurs")
-      .populate([
-        { path: "auteurs", model: "Artist" },
-        { path: "dessinateurs", model: "Artist" },
-      ]);
-    mangasData = await Book.find({ type: "Mangas" })
-      .select("genre auteurs dessinateurs")
-      .populate([
-        { path: "auteurs", model: "Artist" },
-        { path: "dessinateurs", model: "Artist" },
-      ]);
-    romansData = await Book.find({ type: "Romans" })
-      .select("genre auteurs dessinateurs")
-      .populate([
-        { path: "auteurs", model: "Artist" },
-        { path: "dessinateurs", model: "Artist" },
-      ]);
+    comicsData = await Book.find({ type: "Comics" }).select(
+      "genre auteurs dessinateurs"
+    );
+    bdsData = await Book.find({ type: "BD" }).select(
+      "genre auteurs dessinateurs"
+    );
+    mangasData = await Book.find({ type: "Mangas" }).select(
+      "genre auteurs dessinateurs"
+    );
+    romansData = await Book.find({ type: "Romans" }).select(
+      "genre auteurs dessinateurs"
+    );
   } catch (err) {
     const error = new HttpError("Failed to find books", 500);
     return next(error);
