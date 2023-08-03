@@ -710,18 +710,30 @@ const getMenusData = async (req, res, next) => {
 
   // for each, collect the different genres, the most famous artists and two random books
   try {
-    comicsData = await Book.find({ type: "Comics" }).select(
-      "genre auteurs dessinateurs"
-    );
-    bdsData = await Book.find({ type: "BD" }).select(
-      "genre auteurs dessinateurs"
-    );
-    mangasData = await Book.find({ type: "Mangas" }).select(
-      "genre auteurs dessinateurs"
-    );
-    romansData = await Book.find({ type: "Romans" }).select(
-      "genre auteurs dessinateurs"
-    );
+    comicsData = await Book.find({ type: "Comics" })
+      .select("genre auteurs dessinateurs")
+      .populate([
+        { path: "auteurs", model: "Artist" },
+        { path: "dessinateurs", model: "Artist" },
+      ]);
+    bdsData = await Book.find({ type: "BD" })
+      .select("genre auteurs dessinateurs")
+      .populate([
+        { path: "auteurs", model: "Artist" },
+        { path: "dessinateurs", model: "Artist" },
+      ]);
+    mangasData = await Book.find({ type: "Mangas" })
+      .select("genre auteurs dessinateurs")
+      .populate([
+        { path: "auteurs", model: "Artist" },
+        { path: "dessinateurs", model: "Artist" },
+      ]);
+    romansData = await Book.find({ type: "Romans" })
+      .select("genre auteurs dessinateurs")
+      .populate([
+        { path: "auteurs", model: "Artist" },
+        { path: "dessinateurs", model: "Artist" },
+      ]);
   } catch (err) {
     const error = new HttpError("Failed to find books", 500);
     return next(error);
@@ -745,7 +757,15 @@ const sortBooksMenu = (books) => {
   });
 
   res.genres = [...new Set(res.genres)];
-  res.artists = [...new Set(res.artists)];
+  res.artists = res.artists.reduce((acc, curr) => {
+    const index = acc.findIndex((artist) => artist._id === curr._id);
+    if (index === -1) {
+      acc.push(curr);
+    } else {
+      acc[index].books.push(...curr.books);
+    }
+    return acc;
+  }, []);
   res.books = res.books.sort(() => Math.random() - 0.5).slice(0, 2);
 
   return res;
