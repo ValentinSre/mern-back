@@ -365,8 +365,8 @@ const getReadlistByUserId = async (req, res, next) => {
   }
 
   const allUnreadBooks = unreadCollection.map((coll) => {
-    const { book } = coll;
-    const { _id, serie, titre, tome, image, version } = book;
+    const { book, date_achat } = coll;
+    const { _id, serie, titre, tome, image, version, planches } = book;
     return {
       id_book: _id,
       serie,
@@ -374,6 +374,8 @@ const getReadlistByUserId = async (req, res, next) => {
       tome,
       image,
       version,
+      date_achat,
+      planches,
     };
   });
 
