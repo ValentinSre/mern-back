@@ -342,10 +342,10 @@ const getReadlistByUserId = async (req, res, next) => {
       possede: true,
       lu: { $ne: true },
     })
-      .select("book")
+      .select("book date_achat")
       .populate({
         path: "book",
-        select: "_id serie titre tome image version",
+        select: "_id serie titre tome image version planches",
       });
   } catch (err) {
     const error = new HttpError(
