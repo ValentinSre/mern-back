@@ -114,6 +114,7 @@ const getBookById = async (req, res, next) => {
       bookObj.possede = bookCollection.possede;
       bookObj.critique = bookCollection.critique;
       bookObj.lu = bookCollection.lu;
+      bookObj.revendu = bookCollection.revendu;
       bookObj.note = bookCollection.note;
       bookObj.read_dates = bookCollection.read_dates;
       bookObj.date_achat = bookCollection.date_achat;
@@ -703,60 +704,76 @@ const getAllBooksFromArtist = async (req, res, next) => {
 };
 
 const getMenusData = async (req, res, next) => {
-  let comicsData;
-  let bdsData;
-  let mangasData;
-  let romansData;
-
-  // for each, collect the different genres, the most famous artists and two random books
   try {
-    comicsData = await Book.find({ type: "Comics" }).select(
-      "genre auteurs dessinateurs"
-    );
-    bdsData = await Book.find({ type: "BD" }).select(
-      "genre auteurs dessinateurs"
-    );
-    mangasData = await Book.find({ type: "Mangas" }).select(
-      "genre auteurs dessinateurs"
-    );
-    romansData = await Book.find({ type: "Romans" }).select(
-      "genre auteurs dessinateurs"
-    );
-  } catch (err) {
-    const error = new HttpError("Failed to find books", 500);
-    return next(error);
-  }
+    const types = ["Manga", "Comics", "BD", "Roman"];
+    const menusData = {};
 
-  const comicsRes = sortBooksMenu(comicsData);
-  const bdsRes = sortBooksMenu(bdsData);
-  const mangasRes = sortBooksMenu(mangasData);
-  const romansRes = sortBooksMenu(romansData);
+    for (const type of types) {
+      // Obtenez les genres pour ce type (maximum 10)
+      const genres = await Book.aggregate([
+        { $match: { type } },
+        { $group: { _id: "$genre" } },
+        { $limit: 10 },
+        { $project: { _id: 0, genre: "$_id" } },
+      ]);
 
-  res.status(200).json({ comicsRes, bdsRes, mangasRes, romansRes });
-};
+      // Obtenez deux livres aléatoires pour ce type
+      const randomBooks = await Book.aggregate([
+        { $match: { type } },
+        { $sample: { size: 2 } },
+        {
+          $project: {
+            _id: 1,
+            image: 1,
+            titre: 1,
+            serie: 1,
+            version: 1,
+            tome: 1,
+          },
+        },
+      ]);
 
-const sortBooksMenu = (books) => {
-  const res = { genres: [], artists: [], books: [] };
+      // Obtenez les 10 artistes les plus célèbres pour ce type
+      const topArtists = await Artist.aggregate([
+        {
+          $lookup: {
+            from: "books",
+            localField: "_id",
+            foreignField: "auteurs",
+            as: "books",
+          },
+        },
+        { $match: { "books.type": type } },
+        { $unwind: "$books" },
+        {
+          $group: {
+            _id: "$_id",
+            nom: { $first: "$nom" },
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { count: -1 } },
+        { $limit: 10 },
+        {
+          $project: {
+            _id: 1,
+            nom: 1,
+          },
+        },
+      ]);
 
-  books.forEach((book) => {
-    res.genres.push(book.genre);
-    res.artists.push(...book.auteurs, ...book.dessinateurs);
-    res.books.push(book);
-  });
-
-  res.genres = [...new Set(res.genres)];
-  res.artists = res.artists.reduce((acc, curr) => {
-    const index = acc.findIndex((artist) => artist._id === curr._id);
-    if (index === -1) {
-      acc.push(curr);
-    } else {
-      acc[index].books.push(...curr.books);
+      menusData[type] = {
+        genres,
+        randomBooks,
+        topArtists,
+      };
     }
-    return acc;
-  }, []);
-  res.books = res.books.sort(() => Math.random() - 0.5).slice(0, 2);
 
-  return res;
+    // Envoyez les données en réponse
+    res.json(menusData);
+  } catch (error) {
+    next(error);
+  }
 };
 
 exports.getBooks = getBooks;

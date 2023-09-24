@@ -477,7 +477,8 @@ const editCollection = async (req, res, next) => {
     next(error);
   }
 
-  const { id_book, id_user, lu, lien, review, note, date_lecture } = req.body;
+  const { id_book, id_user, lu, lien, review, note, date_lecture, revendu } =
+    req.body;
 
   let collection;
   try {
@@ -500,8 +501,10 @@ const editCollection = async (req, res, next) => {
     });
   }
 
+  console.log("Coucou ", revendu);
   if (collection) {
     if (lu) collection.lu = lu;
+    if (revendu) collection.revendu = revendu;
     if (date_lecture) collection.read_dates.push(date_lecture);
     if (lien) collection.lien = lien;
     if (review || lien) collection.critique = true;

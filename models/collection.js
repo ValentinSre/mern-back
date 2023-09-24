@@ -14,6 +14,7 @@ const collectionSchema = new Schema({
   review: { type: String, required: false },
   lien: { type: String, required: false },
   note: { type: Number, required: false },
+  revendu: { type: Boolean, required: false },
 });
 
 module.exports = mongoose.model("Collection", collectionSchema);
