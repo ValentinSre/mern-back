@@ -340,6 +340,7 @@ const getReadlistByUserId = async (req, res, next) => {
     unreadCollection = await Collection.find({
       owner: userId,
       possede: true,
+      revendu: { $ne: true },
       lu: { $ne: true },
     })
       .select("book date_achat")
