@@ -41,10 +41,6 @@ const getCollectionByUserId = async (req, res, next) => {
     return { ...book, ...rest, id_book: id };
   });
 
-  // Fetch editeurs
-  const editeursSet = new Set(collectionWithBookId.map((coll) => coll.editeur));
-  const editeurs = Array.from(editeursSet);
-
   let collectionToReturn = [];
   if (displayMode === "bySeries") {
     for (const coll of collectionWithBookId) {
@@ -113,7 +109,6 @@ const getCollectionByUserId = async (req, res, next) => {
 
   res.json({
     collection: collectionToReturn,
-    editeurs: editeurs,
   });
 };
 
